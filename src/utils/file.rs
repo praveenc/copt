@@ -103,8 +103,8 @@ pub fn read_prompts_from_dir<P: AsRef<Path>>(dir: P) -> Result<Vec<(String, Stri
         anyhow::bail!("Path is not a directory: {}", dir.display());
     }
 
-    for entry in
-        std::fs::read_dir(dir).with_context(|| format!("Failed to read directory: {}", dir.display()))?
+    for entry in std::fs::read_dir(dir)
+        .with_context(|| format!("Failed to read directory: {}", dir.display()))?
     {
         let entry = entry?;
         let path = entry.path();

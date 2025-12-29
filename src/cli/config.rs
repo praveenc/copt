@@ -188,9 +188,7 @@ pub fn load_config_from_path(path: &PathBuf) -> Result<Config> {
 pub fn get_config_path() -> PathBuf {
     // Check XDG_CONFIG_HOME first, then fall back to ~/.config
     if let Ok(xdg_config) = std::env::var("XDG_CONFIG_HOME") {
-        PathBuf::from(xdg_config)
-            .join("copt")
-            .join("config.toml")
+        PathBuf::from(xdg_config).join("copt").join("config.toml")
     } else if let Some(home) = dirs_home() {
         // Try ~/.copt.toml first (legacy location)
         let legacy_path = home.join(".copt.toml");

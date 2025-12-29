@@ -71,8 +71,12 @@ mod tests {
 
     #[test]
     fn test_is_valid_model() {
-        assert!(is_valid_model("us.anthropic.claude-sonnet-4-5-20250929-v1:0"));
-        assert!(is_valid_model("global.anthropic.claude-opus-4-5-20251101-v1:0"));
+        assert!(is_valid_model(
+            "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        ));
+        assert!(is_valid_model(
+            "global.anthropic.claude-opus-4-5-20251101-v1:0"
+        ));
         assert!(is_valid_model("sonnet"));
         assert!(is_valid_model("opus-4.5"));
         assert!(!is_valid_model("gpt-4"));

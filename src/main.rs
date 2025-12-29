@@ -43,7 +43,12 @@ struct Cli {
     output: Option<PathBuf>,
 
     /// Output directory for auto-save
-    #[arg(long, value_name = "DIR", default_value = "copt-output", hide_default_value = true)]
+    #[arg(
+        long,
+        value_name = "DIR",
+        default_value = "copt-output",
+        hide_default_value = true
+    )]
     output_dir: PathBuf,
 
     /// Disable auto-save
@@ -51,11 +56,22 @@ struct Cli {
     no_save: bool,
 
     /// Provider: anthropic, bedrock
-    #[arg(short, long, value_enum, default_value = "bedrock", hide_default_value = true)]
+    #[arg(
+        short,
+        long,
+        value_enum,
+        default_value = "bedrock",
+        hide_default_value = true
+    )]
     provider: Provider,
 
     /// Model ID or alias
-    #[arg(short, long, hide_default_value = true, default_value = "us.anthropic.claude-sonnet-4-5-20250929-v1:0")]
+    #[arg(
+        short,
+        long,
+        hide_default_value = true,
+        default_value = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    )]
     model: String,
 
     /// AWS region for Bedrock
@@ -198,10 +214,7 @@ async fn check_provider_connectivity(cli: &Cli) -> Result<()> {
             }
 
             if !cli.quiet && cli.format != OutputFormat::Quiet {
-                println!(
-                    "{} Using Anthropic API (API key configured)",
-                    "✓".green()
-                );
+                println!("{} Using Anthropic API (API key configured)", "✓".green());
                 println!();
             }
             Ok(())
@@ -365,7 +378,8 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
             Provider::Bedrock => Box::new(llm::BedrockClient::new(&cli.region).await?),
         };
 
-        let result = optimizer::optimize_with_llm(prompt, &issues, client.as_ref(), &cli.model).await?;
+        let result =
+            optimizer::optimize_with_llm(prompt, &issues, client.as_ref(), &cli.model).await?;
         if let Some(s) = spinner {
             tui::renderer::stop_optimizing_spinner(s);
         }
@@ -475,9 +489,9 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
     if let Some(ref path) = output_path {
         // Create output directory if it doesn't exist
         if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .with_context(|| format!("Failed to create output directory: {}", parent.display()))?;
+            tokio::fs::create_dir_all(parent).await.with_context(|| {
+                format!("Failed to create output directory: {}", parent.display())
+            })?;
         }
 
         // Write the optimized prompt
@@ -505,7 +519,7 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
                 "message": i.message,
             })).collect::<Vec<_>>(),
         });
-        
+
         tokio::fs::write(&metadata_path, serde_json::to_string_pretty(&metadata)?)
             .await
             .with_context(|| format!("Failed to write metadata: {}", metadata_path.display()))?;

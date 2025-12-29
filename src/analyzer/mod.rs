@@ -146,13 +146,15 @@ fn analyze_explicitness(prompt: &str) -> Vec<Issue> {
     let complex_task_indicators = Regex::new(
         r"(?i)\b(research|analyze|investigate|explore|evaluate|review|implement|build|create)\s+(the|a|an)?\s*\w+"
     ).unwrap();
-    
+
     if complex_task_indicators.is_match(prompt) {
         let has_criteria = prompt.contains("success")
             || prompt.contains("complete when")
             || prompt.contains("done when")
             || prompt.contains("criteria")
-            || Regex::new(r"\d+\s*(steps?|items?|points?)").unwrap().is_match(prompt);
+            || Regex::new(r"\d+\s*(steps?|items?|points?)")
+                .unwrap()
+                .is_match(prompt);
 
         if !has_criteria && prompt.len() > 100 {
             issues.push(Issue {
@@ -177,9 +179,8 @@ fn analyze_style(prompt: &str) -> Vec<Issue> {
     let lines: Vec<&str> = prompt.lines().collect();
 
     // STY001: Negative instructions
-    let negative_patterns = Regex::new(
-        r"(?i)\b(don't|do not|never|avoid|stop|no\s+\w+ing)\b"
-    ).unwrap();
+    let negative_patterns =
+        Regex::new(r"(?i)\b(don't|do not|never|avoid|stop|no\s+\w+ing)\b").unwrap();
 
     for (idx, line) in lines.iter().enumerate() {
         if negative_patterns.is_match(line) {
@@ -263,9 +264,9 @@ fn analyze_style(prompt: &str) -> Vec<Issue> {
     }
 
     // STY004: Over-triggering language (multiple emphatic triggers)
-    let emphatic_triggers = Regex::new(
-        r"(?i)\b(critical|must|mandatory|required|essential|always|never|important)\b"
-    ).unwrap();
+    let emphatic_triggers =
+        Regex::new(r"(?i)\b(critical|must|mandatory|required|essential|always|never|important)\b")
+            .unwrap();
 
     let trigger_count = emphatic_triggers.find_iter(prompt).count();
     if trigger_count > 3 {
@@ -319,8 +320,9 @@ fn analyze_tools(prompt: &str) -> Vec<Issue> {
 
     // TUL002: Multiple operations without parallel guidance
     let multi_file_pattern = Regex::new(
-        r"(?i)\b(all|every|each|multiple)\s+\w*\s*(files?|endpoints?|functions?|tests?)\b"
-    ).unwrap();
+        r"(?i)\b(all|every|each|multiple)\s+\w*\s*(files?|endpoints?|functions?|tests?)\b",
+    )
+    .unwrap();
 
     if multi_file_pattern.is_match(prompt) {
         let has_parallel_guidance = prompt.contains("parallel")
@@ -345,9 +347,9 @@ fn analyze_tools(prompt: &str) -> Vec<Issue> {
     }
 
     // TUL003: Missing cleanup instructions
-    let temp_file_indicators = Regex::new(
-        r"(?i)\b(test|temp|temporary|helper|scratch|debug)\s*(script|file|code)\b"
-    ).unwrap();
+    let temp_file_indicators =
+        Regex::new(r"(?i)\b(test|temp|temporary|helper|scratch|debug)\s*(script|file|code)\b")
+            .unwrap();
 
     if temp_file_indicators.is_match(prompt) {
         let has_cleanup = prompt.contains("clean up")
@@ -380,9 +382,8 @@ fn analyze_formatting(prompt: &str) -> Vec<Issue> {
     let lines: Vec<&str> = prompt.lines().collect();
 
     // FMT001: Missing format specification for complex outputs
-    let complex_output_indicators = Regex::new(
-        r"(?i)\b(explain|describe|analyze|write|create|generate|produce)\b"
-    ).unwrap();
+    let complex_output_indicators =
+        Regex::new(r"(?i)\b(explain|describe|analyze|write|create|generate|produce)\b").unwrap();
 
     if complex_output_indicators.is_match(prompt) && prompt.len() > 50 {
         let has_format_spec = prompt.contains("format")
@@ -411,8 +412,9 @@ fn analyze_formatting(prompt: &str) -> Vec<Issue> {
 
     // FMT002: Negative format instructions
     let negative_format = Regex::new(
-        r"(?i)\b(no|don't|do not|avoid|without)\s+(markdown|bullet|list|formatting|bold|italic)\b"
-    ).unwrap();
+        r"(?i)\b(no|don't|do not|avoid|without)\s+(markdown|bullet|list|formatting|bold|italic)\b",
+    )
+    .unwrap();
 
     for (idx, line) in lines.iter().enumerate() {
         if negative_format.is_match(line) {
@@ -432,9 +434,8 @@ fn analyze_formatting(prompt: &str) -> Vec<Issue> {
     }
 
     // FMT003: Complex prompt without XML structure
-    let has_multiple_sections = prompt.contains(":")
-        && (prompt.matches(':').count() > 3)
-        && prompt.len() > 300;
+    let has_multiple_sections =
+        prompt.contains(":") && (prompt.matches(':').count() > 3) && prompt.len() > 300;
 
     let has_xml = prompt.contains('<') && prompt.contains('>');
 
@@ -461,9 +462,8 @@ fn analyze_verbosity(prompt: &str) -> Vec<Issue> {
     let mut issues = Vec::new();
 
     // VRB001: Missing verbosity guidance for complex tasks
-    let complex_task = Regex::new(
-        r"(?i)\b(refactor|implement|build|create|develop|migrate)\b"
-    ).unwrap();
+    let complex_task =
+        Regex::new(r"(?i)\b(refactor|implement|build|create|develop|migrate)\b").unwrap();
 
     if complex_task.is_match(prompt) && prompt.len() > 100 {
         let has_verbosity = prompt.contains("summary")
@@ -504,8 +504,7 @@ fn analyze_verbosity(prompt: &str) -> Vec<Issue> {
             message: "Multi-step task without progress reporting guidance".to_string(),
             line: None,
             suggestion: Some(
-                "Consider adding: \"Provide a quick update after each step.\""
-                    .to_string(),
+                "Consider adding: \"Provide a quick update after each step.\"".to_string(),
             ),
         });
     }
@@ -519,8 +518,9 @@ fn analyze_agentic(prompt: &str) -> Vec<Issue> {
 
     // AGT001: Code modification without exploration directive
     let code_mod_patterns = Regex::new(
-        r"(?i)\b(fix|update|change|modify|edit|refactor)\b.*\b(code|function|class|file|module)\b"
-    ).unwrap();
+        r"(?i)\b(fix|update|change|modify|edit|refactor)\b.*\b(code|function|class|file|module)\b",
+    )
+    .unwrap();
 
     if code_mod_patterns.is_match(prompt) {
         let has_exploration = prompt.contains("read")
@@ -546,9 +546,8 @@ fn analyze_agentic(prompt: &str) -> Vec<Issue> {
     }
 
     // AGT002: Questions about code without investigation requirement
-    let code_question = Regex::new(
-        r"(?i)\b(why|how|what)\b.*\b(code|function|bug|error|issue|failing)\b"
-    ).unwrap();
+    let code_question =
+        Regex::new(r"(?i)\b(why|how|what)\b.*\b(code|function|bug|error|issue|failing)\b").unwrap();
 
     if code_question.is_match(prompt) {
         let has_investigation = prompt.contains("investigate")
@@ -573,9 +572,8 @@ fn analyze_agentic(prompt: &str) -> Vec<Issue> {
     }
 
     // AGT003: Complex implementation without state tracking
-    let complex_impl = Regex::new(
-        r"(?i)\b(implement|build|create)\b.*\b(full|complete|entire|whole)\b"
-    ).unwrap();
+    let complex_impl =
+        Regex::new(r"(?i)\b(implement|build|create)\b.*\b(full|complete|entire|whole)\b").unwrap();
 
     if complex_impl.is_match(prompt) {
         let has_state_tracking = prompt.contains("progress")
@@ -602,8 +600,9 @@ fn analyze_agentic(prompt: &str) -> Vec<Issue> {
 
     // AGT004: Open-ended implementation without anti-overengineering
     let open_ended = Regex::new(
-        r"(?i)\b(build|create|implement|design)\s+(a|an)\s+\w+\s+(system|solution|service)\b"
-    ).unwrap();
+        r"(?i)\b(build|create|implement|design)\s+(a|an)\s+\w+\s+(system|solution|service)\b",
+    )
+    .unwrap();
 
     if open_ended.is_match(prompt) {
         let has_simplicity = prompt.contains("simple")
@@ -701,8 +700,7 @@ fn analyze_long_horizon(prompt: &str) -> Vec<Issue> {
             message: "Extended task without context window awareness".to_string(),
             line: None,
             suggestion: Some(
-                "Consider adding context awareness instructions for very long tasks."
-                    .to_string(),
+                "Consider adding context awareness instructions for very long tasks.".to_string(),
             ),
         });
     }
@@ -724,9 +722,9 @@ fn analyze_frontend(prompt: &str) -> Vec<Issue> {
     }
 
     // FED001: Generic UI request without aesthetic guidance
-    let ui_creation = Regex::new(
-        r"(?i)\b(create|build|make|design)\b.*\b(ui|page|component|form|dashboard)\b"
-    ).unwrap();
+    let ui_creation =
+        Regex::new(r"(?i)\b(create|build|make|design)\b.*\b(ui|page|component|form|dashboard)\b")
+            .unwrap();
 
     if ui_creation.is_match(prompt) {
         let has_aesthetics = prompt.contains("aesthetic")
@@ -769,8 +767,7 @@ fn analyze_frontend(prompt: &str) -> Vec<Issue> {
             message: "Frontend request without specific design guidance".to_string(),
             line: None,
             suggestion: Some(
-                "Consider specifying typography, color scheme, and motion preferences."
-                    .to_string(),
+                "Consider specifying typography, color scheme, and motion preferences.".to_string(),
             ),
         });
     }
@@ -815,11 +812,11 @@ mod tests {
     #[test]
     fn test_category_filtering() {
         let prompt = "Can you suggest some changes? Don't use markdown.";
-        
+
         // Only check style
         let style_issues = analyze(prompt, Some(&["style".to_string()])).unwrap();
         assert!(style_issues.iter().all(|i| i.category == "style"));
-        
+
         // Only check tools
         let tool_issues = analyze(prompt, Some(&["tools".to_string()])).unwrap();
         assert!(tool_issues.iter().all(|i| i.category == "tools"));

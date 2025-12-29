@@ -31,7 +31,9 @@ pub fn print_offline_banner() {
     println!(
         "  {}  {}",
         "⚠".yellow(),
-        "OFFLINE MODE - Using static analysis only (no LLM calls)".yellow().bold()
+        "OFFLINE MODE - Using static analysis only (no LLM calls)"
+            .yellow()
+            .bold()
     );
     println!();
 }
@@ -114,9 +116,13 @@ pub fn print_analysis(issues: &[Issue]) {
     }
     if warnings > 0 {
         summary_parts.push(
-            format!("{} warning{}", warnings, if warnings == 1 { "" } else { "s" })
-                .yellow()
-                .to_string(),
+            format!(
+                "{} warning{}",
+                warnings,
+                if warnings == 1 { "" } else { "s" }
+            )
+            .yellow()
+            .to_string(),
         );
     }
     if infos > 0 {
@@ -138,17 +144,14 @@ pub fn print_analysis(issues: &[Issue]) {
     // Print each category with aggregated issues
     for (category, cat_issues) in categories.iter() {
         let category_display = format_category_name(category);
-        
+
         // Group issues by rule ID for aggregation
         let mut rule_groups: std::collections::HashMap<String, Vec<&Issue>> =
             std::collections::HashMap::new();
         for issue in cat_issues {
-            rule_groups
-                .entry(issue.id.clone())
-                .or_default()
-                .push(issue);
+            rule_groups.entry(issue.id.clone()).or_default().push(issue);
         }
-        
+
         // Count unique rules
         let unique_rules = rule_groups.len();
         println!(
@@ -169,8 +172,12 @@ pub fn print_analysis(issues: &[Issue]) {
             };
 
             // Get base message (without line-specific info)
-            let base_msg = first_issue.message.split(':').next().unwrap_or(&first_issue.message);
-            
+            let base_msg = first_issue
+                .message
+                .split(':')
+                .next()
+                .unwrap_or(&first_issue.message);
+
             // Truncate message if too long
             let max_msg_len = 50;
             let msg = if base_msg.len() > max_msg_len {
@@ -181,7 +188,9 @@ pub fn print_analysis(issues: &[Issue]) {
 
             // Show line count if multiple occurrences
             let count_info = if rule_issues.len() > 1 {
-                format!(" ({} lines)", rule_issues.len()).bright_black().to_string()
+                format!(" ({} lines)", rule_issues.len())
+                    .bright_black()
+                    .to_string()
             } else if let Some(line) = first_issue.line {
                 format!(" (L{})", line).bright_black().to_string()
             } else {
@@ -217,7 +226,7 @@ pub fn start_optimizing_spinner(model: &str) -> indicatif::ProgressBar {
         ProgressStyle::default_spinner()
             .template("  {spinner:.cyan} {msg} [{elapsed_precise}]")
             .unwrap()
-            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏", "✓"])
+            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏", "✓"]),
     );
     spinner.set_message(format!("Optimizing with {}...", model_short));
     spinner.enable_steady_tick(Duration::from_millis(80));

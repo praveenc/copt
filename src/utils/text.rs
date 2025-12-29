@@ -181,9 +181,7 @@ mod tests {
     #[test]
     fn test_count_tokens() {
         assert!(count_tokens("Hello world") > 0);
-        assert!(
-            count_tokens("This is a longer sentence with more words") > count_tokens("Hello")
-        );
+        assert!(count_tokens("This is a longer sentence with more words") > count_tokens("Hello"));
     }
 
     #[test]

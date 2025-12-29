@@ -348,7 +348,7 @@ RUST_LOG=debug cargo run -- -f test.txt --offline
 
 ## Acknowledgments
 
-- [Anthropic](https://www.anthropic.com/) — Claude models and [prompt engineering best practices](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/claude-4-5-best-practices)
+- [Anthropic](https://www.anthropic.com/) — Claude models and [prompt engineering best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-4-best-practices)
 - [clap](https://github.com/clap-rs/clap) — CLI argument parsing
 - [colored](https://github.com/mackwic/colored) — Terminal colors
 - [indicatif](https://github.com/console-rs/indicatif) — Progress indicators
@@ -356,6 +356,6 @@ RUST_LOG=debug cargo run -- -f test.txt --offline
 ---
 
 <div align="center">
-  <b>Built for the Claude developer community</b><br>
+  <b>Built for the Claude developer community with ❤️</b><br>
   <sub>⭐ Star this repo if you find it useful!</sub>
 </div>
