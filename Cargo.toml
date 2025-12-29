@@ -1,0 +1,86 @@
+[package]
+name = "copt"
+version = "0.1.1"
+edition = "2021"
+authors = ["Praveen Chamarthi"]
+description = "Claude Prompt Optimizer - A beautiful CLI tool to optimize prompts for Claude 4.5 family of models"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/praveenc/copt"
+keywords = ["cli", "prompt", "claude", "anthropic", "llm", "ai"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+# CLI Framework
+clap = { version = "4.5", features = ["derive", "env", "wrap_help", "color"] }
+
+# Terminal UI
+ratatui = "0.28"
+crossterm = "0.28"
+indicatif = { version = "0.17", features = ["tokio"] }
+console = "0.15"
+dialoguer = { version = "0.11", features = ["fuzzy-select"] }
+colored = "2.1"
+
+# Async Runtime & HTTP
+tokio = { version = "1.40", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "stream"] }
+futures = "0.3"
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Text Processing
+regex = "1.10"
+unicode-segmentation = "1.11"
+tiktoken-rs = "0.6"
+similar = { version = "2.6", features = ["inline"] }
+textwrap = "0.16"
+
+# Date/Time
+chrono = "0.4"
+
+# Error Handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# AWS SDK (for Bedrock)
+aws-config = { version = "1.5", features = ["behavior-version-latest"] }
+aws-sdk-bedrockruntime = "1.50"
+aws-credential-types = "1.2"
+
+# Configuration
+directories = "5.0"
+dotenvy = "0.15"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
+tempfile = "3.12"
+wiremock = "0.6"
+tokio-test = "0.4"
+pretty_assertions = "1.4"
+insta = { version = "1.39", features = ["json"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[[bin]]
+name = "copt"
+path = "src/main.rs"
+
+[features]
+default = ["anthropic", "bedrock"]
+anthropic = []
+bedrock = []
+offline = []

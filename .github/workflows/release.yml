@@ -1,0 +1,153 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: copt
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact_name: copt-macos-arm64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact_name: copt-macos-x64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_name: copt-linux-x64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact_name: copt-windows-x64.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare artifact (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }} ${{ matrix.artifact_name }}
+          chmod +x ${{ matrix.artifact_name }}
+
+      - name: Prepare artifact (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}.exe ${{ matrix.artifact_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          for dir in artifacts/*/; do
+            cp "$dir"* release/ || true
+          done
+          ls -la release/
+
+      - name: Generate SHA256 checksums
+        run: |
+          cd release
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: copt v${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          generate_release_notes: true
+          files: |
+            release/copt-macos-arm64
+            release/copt-macos-x64
+            release/copt-linux-x64
+            release/copt-windows-x64.exe
+            release/SHA256SUMS.txt
+          body: |
+            ## Installation
+
+            Download the appropriate binary for your platform:
+
+            | Platform | Download |
+            |----------|----------|
+            | macOS (Apple Silicon) | `copt-macos-arm64` |
+            | macOS (Intel) | `copt-macos-x64` |
+            | Linux (x64) | `copt-linux-x64` |
+            | Windows (x64) | `copt-windows-x64.exe` |
+
+            ### Quick Install (macOS/Linux)
+
+            ```bash
+            # Download (replace with your platform)
+            curl -L https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}/copt-linux-x64 -o copt
+
+            # Make executable
+            chmod +x copt
+
+            # Move to PATH
+            sudo mv copt /usr/local/bin/
+
+            # Verify
+            copt --version
+            ```
+
+            ### Verify Checksums
+
+            ```bash
+            sha256sum -c SHA256SUMS.txt
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
