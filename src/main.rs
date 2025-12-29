@@ -258,10 +258,7 @@ async fn get_input_prompt(cli: &Cli) -> Result<String> {
 async fn interactive_input() -> Result<String> {
     use dialoguer::Editor;
 
-    println!(
-        "\n{} Opening editor for multi-line input...\n",
-        "📝".to_string()
-    );
+    println!("\n📝 Opening editor for multi-line input...\n");
 
     let prompt = Editor::new()
         .edit("# Enter your prompt below (save and close to continue)\n\n")?

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// Main configuration structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
     /// Default settings
@@ -22,18 +22,6 @@ pub struct Config {
     pub output: OutputConfig,
     /// Rules settings
     pub rules: RulesConfig,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            default: DefaultConfig::default(),
-            anthropic: AnthropicConfig::default(),
-            bedrock: BedrockConfig::default(),
-            output: OutputConfig::default(),
-            rules: RulesConfig::default(),
-        }
-    }
 }
 
 /// Default configuration settings
