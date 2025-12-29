@@ -12,6 +12,7 @@
 ## Why copt?
 
 **Claude 4.5 models** (Opus, Sonnet, Haiku) are trained for **precise instruction following** — they do exactly what you ask. This is different from Claude 3.x, which was more forgiving of vague or implicit instructions.
+Refer to [prompt engineering Claude 4 best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-4-best-practices) for more details.
 
 **copt** helps you:
 
@@ -354,6 +355,8 @@ RUST_LOG=debug cargo run -- -f test.txt --offline
 - [indicatif](https://github.com/console-rs/indicatif) — Progress indicators
 
 ---
+
+If you are a Python developer then I recommend reading [Python - Rust comparision](docs/RUSTY_THINGS.md)
 
 <div align="center">
   <b>Built for the Claude developer community with ❤️</b><br>
