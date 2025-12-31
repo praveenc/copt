@@ -59,10 +59,11 @@ pub mod renderer;
 pub mod spinner;
 pub mod stats;
 
-// Re-export legacy functions
-pub use diff::print_diff;
-pub use renderer::{print_analysis, print_header, print_input_info};
-pub use stats::print_stats;
+// Note: Legacy modules are still used by main.rs for:
+// - tui::renderer::start_optimizing_spinner / stop_optimizing_spinner
+// - tui::renderer::print_optimized_prompt
+// - tui::diff::print_diff
+// - tui::stats::print_save_success
 
 /// Box-drawing characters for terminal UI
 #[allow(dead_code)]

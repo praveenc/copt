@@ -317,40 +317,33 @@ pub struct OptimizationStats {
 
 /// Run the optimization process
 async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult> {
+    use tui::model::{AppPhase, Model};
+
     let start_time = std::time::Instant::now();
+    let use_new_renderer = !cli.quiet && cli.format == OutputFormat::Pretty;
 
-    // Show header unless quiet mode
-    if !cli.quiet && cli.format != OutputFormat::Quiet {
-        tui::print_header();
-    }
-
-    // Show offline mode banner if applicable
-    if cli.offline && !cli.quiet && cli.format != OutputFormat::Quiet {
-        tui::renderer::print_offline_banner();
-    }
-
-    // Show input info
-    if !cli.quiet && cli.format != OutputFormat::Quiet {
-        tui::print_input_info(prompt, &cli.file);
-    }
+    // Build model for new renderer
+    let mut model = if use_new_renderer {
+        let mut m = Model::new();
+        m.offline_mode = cli.offline;
+        m.original_prompt = prompt.to_string();
+        m.input_file = cli.file.as_ref().map(|p| p.display().to_string());
+        m.phase = AppPhase::Analyzing;
+        Some(m)
+    } else {
+        None
+    };
 
     // Analyze the prompt
     let issues = analyzer::analyze(prompt, cli.check.as_deref())?;
 
-    // Show analysis results
-    if !cli.quiet && cli.format != OutputFormat::Quiet {
-        tui::print_analysis(&issues);
+    // Update model with issues
+    if let Some(ref mut m) = model {
+        m.set_issues(&issues);
     }
 
     // If analyze-only or no issues, return early
     if cli.analyze || (issues.is_empty() && !cli.offline) {
-        if issues.is_empty() && !cli.quiet {
-            println!(
-                "\n{} Your prompt looks great! No optimization needed.\n",
-                "✓".green().bold()
-            );
-        }
-
         let stats = OptimizationStats {
             original_chars: prompt.len(),
             optimized_chars: prompt.len(),
@@ -362,6 +355,18 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
             ..Default::default()
         };
 
+        // Update model phase and render
+        if let Some(ref mut m) = model {
+            m.phase = AppPhase::AnalysisDone;
+            tui::linear::render(m)?;
+            if issues.is_empty() {
+                println!(
+                    "\n{} Your prompt looks great! No optimization needed.\n",
+                    "✓".green().bold()
+                );
+            }
+        }
+
         return Ok(OptimizationResult {
             original: prompt.to_string(),
             optimized: prompt.to_string(),
@@ -370,13 +375,20 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
         });
     }
 
+    // Show header and analysis before optimization starts
+    if let Some(ref mut m) = model {
+        m.phase = AppPhase::Optimizing;
+        // Render header, input info, and analysis
+        tui::linear::render(m)?;
+    }
+
     // Perform optimization
     let optimized = if cli.offline {
-        // Static rules only (no spinner needed - just analysis)
+        // Static rules only
         optimizer::optimize_static(prompt, &issues)?
     } else {
         // Start optimization spinner for LLM mode
-        let spinner = if !cli.quiet && cli.format != OutputFormat::Quiet {
+        let spinner = if use_new_renderer {
             Some(tui::renderer::start_optimizing_spinner(&cli.model))
         } else {
             None
@@ -428,6 +440,8 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
 
 /// Handle output based on CLI options
 async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
+    use tui::model::{AppPhase, Model};
+
     match cli.format {
         OutputFormat::Json => {
             let json = serde_json::json!({
@@ -459,11 +473,25 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
             println!("{}", result.optimized);
         }
         OutputFormat::Pretty => {
-            if cli.diff {
-                tui::print_diff(&result.original, &result.optimized);
+            // Use new linear renderer for stats
+            if !cli.offline && !result.issues.is_empty() {
+                let mut model = Model::new();
+                model.offline_mode = cli.offline;
+                model.original_prompt = result.original.clone();
+                model.input_file = cli.file.as_ref().map(|p| p.display().to_string());
+                model.set_issues(&result.issues);
+                model.set_optimization_result(result.optimized.clone(), result.stats.clone());
+                model.phase = AppPhase::Done;
+
+                // Render stats section only (header/analysis already shown)
+                tui::linear::render_stats_only(&model)?;
             }
 
-            // In offline mode, skip stats (nothing was optimized) and show helpful message
+            if cli.diff {
+                tui::diff::print_diff(&result.original, &result.optimized);
+            }
+
+            // In offline mode, show helpful message
             if cli.offline {
                 println!();
                 println!("  {}", "─".repeat(70).bright_black());
@@ -474,12 +502,8 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
                 );
                 println!("  {}", "─".repeat(70).bright_black());
                 println!();
-            } else {
-                tui::print_stats(&result.stats);
-
-                if !cli.diff && !cli.quiet && cli.show_prompt {
-                    tui::renderer::print_optimized_prompt(&result.optimized);
-                }
+            } else if !cli.diff && cli.show_prompt {
+                tui::renderer::print_optimized_prompt(&result.optimized);
             }
         }
     }

@@ -34,6 +34,12 @@ pub fn render(model: &Model) -> io::Result<()> {
     Ok(())
 }
 
+/// Render only the stats section (for use after optimization completes)
+pub fn render_stats_only(model: &Model) -> io::Result<()> {
+    let mut stdout = io::stdout();
+    render_stats(&mut stdout, model)
+}
+
 /// Render the header
 fn render_header(w: &mut impl Write, model: &Model) -> io::Result<()> {
     let icons = icons();
