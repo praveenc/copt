@@ -3,6 +3,8 @@
 //! Renders enhanced output that scrolls like traditional CLI output.
 //! Uses ratatui to render to a string buffer, then prints to stdout.
 
+#![allow(dead_code)]
+
 use std::io::{self, Write};
 
 use colored::Colorize;
@@ -65,10 +67,7 @@ fn render_header(w: &mut impl Write, model: &Model) -> io::Result<()> {
 fn render_input_info(w: &mut impl Write, model: &Model) -> io::Result<()> {
     let icons = icons();
 
-    let source = model
-        .input_file
-        .as_deref()
-        .unwrap_or("stdin");
+    let source = model.input_file.as_deref().unwrap_or("stdin");
 
     let char_count = model.original_prompt.len();
     let token_count = crate::utils::count_tokens(&model.original_prompt);
@@ -142,10 +141,22 @@ fn render_analysis(w: &mut impl Write, model: &Model) -> io::Result<()> {
     // Summary line
     let mut summary_parts = vec![];
     if errors > 0 {
-        summary_parts.push(format!("{} error{}", errors, if errors == 1 { "" } else { "s" }).red().to_string());
+        summary_parts.push(
+            format!("{} error{}", errors, if errors == 1 { "" } else { "s" })
+                .red()
+                .to_string(),
+        );
     }
     if warnings > 0 {
-        summary_parts.push(format!("{} warning{}", warnings, if warnings == 1 { "" } else { "s" }).yellow().to_string());
+        summary_parts.push(
+            format!(
+                "{} warning{}",
+                warnings,
+                if warnings == 1 { "" } else { "s" }
+            )
+            .yellow()
+            .to_string(),
+        );
     }
     if infos > 0 {
         summary_parts.push(format!("{} info", infos).blue().to_string());
@@ -156,7 +167,11 @@ fn render_analysis(w: &mut impl Write, model: &Model) -> io::Result<()> {
         "  Found {} across {} {}",
         summary_parts.join(", "),
         model.issue_tree.categories.len(),
-        if model.issue_tree.categories.len() == 1 { "category" } else { "categories" }
+        if model.issue_tree.categories.len() == 1 {
+            "category"
+        } else {
+            "categories"
+        }
     )?;
     writeln!(w)?;
 
@@ -178,10 +193,7 @@ fn render_analysis(w: &mut impl Write, model: &Model) -> io::Result<()> {
                 Severity::Info => icons.info.blue().to_string(),
             };
 
-            let line_info = issue
-                .line
-                .map(|l| format!(" (L{})", l))
-                .unwrap_or_default();
+            let line_info = issue.line.map(|l| format!(" (L{})", l)).unwrap_or_default();
 
             // Truncate message
             let max_msg_len = 50;

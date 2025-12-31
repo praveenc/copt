@@ -2,13 +2,15 @@
 //!
 //! Implements the main event loop using the Elm (MVU) architecture.
 
+#![allow(dead_code)]
+
 use std::io;
 use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyEventKind};
 
 use super::model::{Model, RenderMode};
-use super::terminal::{self, Tui};
+use super::terminal;
 use super::update::{update, Msg};
 use super::view::render;
 

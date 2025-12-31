@@ -2,6 +2,8 @@
 //!
 //! Detects terminal capabilities and provides appropriate icons.
 
+#![allow(dead_code)]
+
 use std::sync::OnceLock;
 
 /// Icon set with all available icons
@@ -28,42 +30,42 @@ impl IconSet {
     /// Nerd Font icons (requires Nerd Font installed)
     pub fn nerd_fonts() -> Self {
         Self {
-            check: "\u{f00c}",           //
-            cross: "\u{f00d}",           //
-            warning: "\u{f071}",         //
-            info: "\u{f129}",            //
-            lightning: "\u{f0e7}",       //
-            folder_open: "\u{f07c}",     //
-            folder_closed: "\u{f07b}",   //
-            file: "\u{f15b}",            //
-            chart: "\u{f080}",           //
-            gear: "\u{f013}",            //
-            sparkles: "\u{2728}",        // ✨ (unicode sparkles, works everywhere)
-            inbox: "\u{f01c}",           //
-            clock: "\u{f017}",           //
-            arrow_right: "\u{f061}",     //
-            bullet: "\u{f111}",          //
+            check: "\u{f00c}",         //
+            cross: "\u{f00d}",         //
+            warning: "\u{f071}",       //
+            info: "\u{f129}",          //
+            lightning: "\u{f0e7}",     //
+            folder_open: "\u{f07c}",   //
+            folder_closed: "\u{f07b}", //
+            file: "\u{f15b}",          //
+            chart: "\u{f080}",         //
+            gear: "\u{f013}",          //
+            sparkles: "\u{2728}",      // ✨ (unicode sparkles, works everywhere)
+            inbox: "\u{f01c}",         //
+            clock: "\u{f017}",         //
+            arrow_right: "\u{f061}",   //
+            bullet: "\u{f111}",        //
         }
     }
 
     /// Unicode icons (works on most modern terminals)
     pub fn unicode() -> Self {
         Self {
-            check: "\u{2713}",           // ✓
-            cross: "\u{2717}",           // ✗
-            warning: "\u{26a0}",         // ⚠
-            info: "\u{2139}",            // ℹ
-            lightning: "\u{26a1}",       // ⚡
-            folder_open: "\u{25bc}",     // ▼
-            folder_closed: "\u{25b6}",   // ▶
-            file: "\u{2022}",            // •
-            chart: "\u{2593}",           // ▓
-            gear: "\u{2699}",            // ⚙
-            sparkles: "\u{2728}",        // ✨
-            inbox: "\u{1f4e5}",          // 📥
-            clock: "\u{23f1}",           // ⏱
-            arrow_right: "\u{2192}",     // →
-            bullet: "\u{25cf}",          // ●
+            check: "\u{2713}",         // ✓
+            cross: "\u{2717}",         // ✗
+            warning: "\u{26a0}",       // ⚠
+            info: "\u{2139}",          // ℹ
+            lightning: "\u{26a1}",     // ⚡
+            folder_open: "\u{25bc}",   // ▼
+            folder_closed: "\u{25b6}", // ▶
+            file: "\u{2022}",          // •
+            chart: "\u{2593}",         // ▓
+            gear: "\u{2699}",          // ⚙
+            sparkles: "\u{2728}",      // ✨
+            inbox: "\u{1f4e5}",        // 📥
+            clock: "\u{23f1}",         // ⏱
+            arrow_right: "\u{2192}",   // →
+            bullet: "\u{25cf}",        // ●
         }
     }
 
@@ -104,10 +106,7 @@ fn supports_nerd_fonts() -> bool {
             "Hyper",
             "Tabby",
         ];
-        if nerd_font_terminals
-            .iter()
-            .any(|t| term_program.contains(t))
-        {
+        if nerd_font_terminals.iter().any(|t| term_program.contains(t)) {
             return true;
         }
     }

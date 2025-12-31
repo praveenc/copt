@@ -1,6 +1,5 @@
 //! Error modal widget
 
-use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 use ratatui::Frame;
@@ -47,8 +46,7 @@ pub fn render_error_modal(frame: &mut Frame, model: &Model) {
         theme.muted,
     )));
 
-    let paragraph = Paragraph::new(lines)
-        .wrap(Wrap { trim: true });
+    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: true });
 
     frame.render_widget(paragraph, inner_area);
 }
@@ -75,7 +73,11 @@ mod tests {
             .unwrap();
 
         let buffer = terminal.backend().buffer();
-        let content = buffer.content().iter().map(|c| c.symbol()).collect::<String>();
+        let content = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
         assert!(content.contains("Error"));
     }
 

@@ -2,6 +2,8 @@
 //!
 //! Single theme designed to work well on both dark and light terminals.
 
+#![allow(dead_code)]
+
 use ratatui::style::{Color, Modifier, Style};
 
 /// Application theme with consistent styling
@@ -55,9 +57,7 @@ impl Theme {
                 .fg(Color::Green)
                 .add_modifier(Modifier::BOLD),
             warning: Style::default().fg(Color::Yellow),
-            error: Style::default()
-                .fg(Color::Red)
-                .add_modifier(Modifier::BOLD),
+            error: Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             muted: Style::default().fg(Color::DarkGray),
             text: Style::default().fg(Color::White),
             selected: Style::default()

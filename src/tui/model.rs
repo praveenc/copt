@@ -2,6 +2,8 @@
 //!
 //! Implements the Model part of the Elm (MVU) architecture.
 
+#![allow(dead_code)]
+
 use std::collections::HashSet;
 
 use crate::analyzer::Issue;

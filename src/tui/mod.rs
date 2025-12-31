@@ -31,6 +31,7 @@ pub mod widgets;
 
 // Legacy icon constants for backward compatibility with old modules
 // The old modules (renderer.rs, stats.rs, diff.rs) use these
+#[allow(dead_code)]
 pub mod legacy_icons {
     pub const CHECK: &str = "✓";
     pub const CROSS: &str = "✗";
@@ -40,19 +41,11 @@ pub mod legacy_icons {
     pub const INBOX: &str = "📥";
     pub const CHART: &str = "📊";
     pub const GEAR: &str = "⚙";
-    pub const ROCKET: &str = "🚀";
     pub const SPARKLES: &str = "✨";
-    pub const PENCIL: &str = "📝";
-    pub const FOLDER: &str = "📁";
     pub const FILE: &str = "📄";
-    pub const CLOCK: &str = "⏱";
-    pub const PLUG: &str = "🔌";
-    pub const ROBOT: &str = "🤖";
 }
 
-// Re-export new types
-pub use app::{detect_render_mode, run};
-pub use model::{Model, RenderMode, View};
+// Note: main.rs imports directly from submodules (tui::model::*, tui::app::run_interactive)
 
 // ==============================================================
 // Legacy modules and functions for backward compatibility
@@ -72,6 +65,7 @@ pub use renderer::{print_analysis, print_header, print_input_info};
 pub use stats::print_stats;
 
 /// Box-drawing characters for terminal UI
+#[allow(dead_code)]
 pub mod chars {
     pub const TOP_LEFT: &str = "╭";
     pub const TOP_RIGHT: &str = "╮";
@@ -103,6 +97,7 @@ pub fn truncate(s: &str, max_width: usize) -> String {
 }
 
 /// Pad a string to a fixed width
+#[allow(dead_code)]
 pub fn pad_right(s: &str, width: usize) -> String {
     if s.len() >= width {
         s.to_string()
@@ -112,6 +107,7 @@ pub fn pad_right(s: &str, width: usize) -> String {
 }
 
 /// Center a string within a width
+#[allow(dead_code)]
 pub fn center(s: &str, width: usize) -> String {
     if s.len() >= width {
         s.to_string()
@@ -127,11 +123,13 @@ pub fn center(s: &str, width: usize) -> String {
 }
 
 /// Draw a horizontal line
+#[allow(dead_code)]
 pub fn draw_line(width: usize) -> String {
     chars::HORIZONTAL.repeat(width)
 }
 
 /// Draw a box top border
+#[allow(dead_code)]
 pub fn draw_box_top(width: usize, title: Option<&str>) -> String {
     match title {
         Some(t) => {
@@ -160,6 +158,7 @@ pub fn draw_box_top(width: usize, title: Option<&str>) -> String {
 }
 
 /// Draw a box bottom border
+#[allow(dead_code)]
 pub fn draw_box_bottom(width: usize) -> String {
     format!(
         "{}{}{}",
@@ -170,6 +169,7 @@ pub fn draw_box_bottom(width: usize) -> String {
 }
 
 /// Draw a box line (content between borders)
+#[allow(dead_code)]
 pub fn draw_box_line(content: &str, width: usize) -> String {
     let content_width = width.saturating_sub(2);
     let truncated = truncate(content, content_width);
@@ -183,6 +183,7 @@ pub fn draw_box_line(content: &str, width: usize) -> String {
 }
 
 /// Color utilities for consistent theming
+#[allow(dead_code)]
 pub mod colors {
     use colored::ColoredString;
     use colored::Colorize;

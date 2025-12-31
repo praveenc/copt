@@ -44,11 +44,7 @@ pub fn restore() {
     // Only restore if we're in raw mode
     if TERMINAL_RAW.swap(false, Ordering::SeqCst) {
         let _ = disable_raw_mode();
-        let _ = execute!(
-            io::stdout(),
-            LeaveAlternateScreen,
-            DisableMouseCapture
-        );
+        let _ = execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
     }
 }
 
@@ -72,7 +68,7 @@ pub fn install_signal_handlers() -> io::Result<()> {
         restore();
         std::process::exit(130); // 128 + SIGINT (2)
     })
-    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    .map_err(io::Error::other)?;
 
     Ok(())
 }

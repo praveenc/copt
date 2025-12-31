@@ -107,7 +107,11 @@ mod tests {
             .unwrap();
 
         let buffer = terminal.backend().buffer();
-        let content = buffer.content().iter().map(|c| c.symbol()).collect::<String>();
+        let content = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
         assert!(content.contains("NAVIGATION"));
     }
 }

@@ -2,6 +2,8 @@
 //!
 //! Displays optimization statistics in a clean, box-free format.
 
+#![allow(dead_code)]
+
 use colored::Colorize;
 
 use super::legacy_icons as icons;

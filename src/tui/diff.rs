@@ -2,6 +2,8 @@
 //!
 //! Displays side-by-side or unified diff view of original vs optimized prompts.
 
+#![allow(dead_code)]
+
 use colored::Colorize;
 use similar::{ChangeTag, TextDiff};
 

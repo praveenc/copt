@@ -43,9 +43,9 @@ fn render_main(frame: &mut Frame, model: &Model) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(4),  // Header
-            Constraint::Min(10),    // Content (analysis + stats)
-            Constraint::Length(1),  // Status bar
+            Constraint::Length(4), // Header
+            Constraint::Min(10),   // Content (analysis + stats)
+            Constraint::Length(1), // Status bar
         ])
         .split(size);
 
@@ -84,9 +84,9 @@ fn render_diff(frame: &mut Frame, model: &Model) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Header
-            Constraint::Min(10),    // Diff content
-            Constraint::Length(1),  // Status bar
+            Constraint::Length(3), // Header
+            Constraint::Min(10),   // Diff content
+            Constraint::Length(1), // Status bar
         ])
         .split(size);
 
@@ -108,9 +108,9 @@ fn render_help(frame: &mut Frame, model: &Model) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Header
-            Constraint::Min(10),    // Help content
-            Constraint::Length(1),  // Status bar
+            Constraint::Length(3), // Header
+            Constraint::Min(10),   // Help content
+            Constraint::Length(1), // Status bar
         ])
         .split(size);
 
@@ -132,8 +132,8 @@ fn render_minimal(frame: &mut Frame, model: &Model) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(2),     // Minimal content
-            Constraint::Length(1),  // Status bar
+            Constraint::Min(2),    // Minimal content
+            Constraint::Length(1), // Status bar
         ])
         .split(size);
 

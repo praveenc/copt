@@ -33,10 +33,7 @@ pub fn render_diff(frame: &mut Frame, area: Rect, model: &Model) {
     // Split into two columns with a divider
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
-        ])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(inner_area);
 
     // Left side: Original
@@ -72,7 +69,7 @@ fn render_diff_panel(
     let theme = theme();
     let icons = icons();
 
-    let (title, content) = if is_original {
+    let (title, _content) = if is_original {
         (format!("{} Original", icons.file), original)
     } else {
         (format!("{} Optimized", icons.sparkles), optimized)
@@ -114,10 +111,7 @@ fn render_diff_panel(
     }
 
     // Apply scroll offset
-    let visible_lines: Vec<Line> = lines
-        .into_iter()
-        .skip(scroll_offset as usize)
-        .collect();
+    let visible_lines: Vec<Line> = lines.into_iter().skip(scroll_offset as usize).collect();
 
     let paragraph = Paragraph::new(visible_lines).wrap(Wrap { trim: false });
 
@@ -137,7 +131,8 @@ mod tests {
 
         let mut model = Model::default();
         model.original_prompt = "Hello world\nThis is a test".to_string();
-        model.optimized_prompt = Some("Hello world\nThis is an improved test\nWith more detail".to_string());
+        model.optimized_prompt =
+            Some("Hello world\nThis is an improved test\nWith more detail".to_string());
 
         terminal
             .draw(|frame| {

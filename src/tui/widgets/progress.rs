@@ -1,7 +1,6 @@
 //! Progress widget for optimization status
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::Stylize;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Gauge, Paragraph};
 use ratatui::Frame;

@@ -2,6 +2,8 @@
 //!
 //! Implements the Update part of the Elm (MVU) architecture.
 
+#![allow(dead_code)]
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::model::{Model, View};
@@ -206,9 +208,7 @@ fn copy_to_clipboard(text: &str) -> Result<(), Box<dyn std::error::Error>> {
         use std::io::Write;
         use std::process::{Command, Stdio};
 
-        let mut child = Command::new("pbcopy")
-            .stdin(Stdio::piped())
-            .spawn()?;
+        let mut child = Command::new("pbcopy").stdin(Stdio::piped()).spawn()?;
 
         if let Some(mut stdin) = child.stdin.take() {
             stdin.write_all(text.as_bytes())?;

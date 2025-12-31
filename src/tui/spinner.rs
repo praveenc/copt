@@ -2,6 +2,8 @@
 //!
 //! Provides animated spinners and progress bars for long-running operations.
 
+#![allow(dead_code)]
+
 use std::io::{self, Write};
 
 /// Spinner animation frames

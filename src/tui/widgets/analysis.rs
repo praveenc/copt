@@ -29,7 +29,10 @@ pub fn render_analysis(frame: &mut Frame, area: Rect, model: &Model) {
         // No issues found
         let text = Line::from(vec![
             Span::styled(format!("{} ", icons.check), theme.success),
-            Span::styled("No issues detected - your prompt looks good!", theme.success),
+            Span::styled(
+                "No issues detected - your prompt looks good!",
+                theme.success,
+            ),
         ]);
         let paragraph = ratatui::widgets::Paragraph::new(text);
         frame.render_widget(paragraph, inner_area);
@@ -91,10 +94,7 @@ pub fn render_analysis(frame: &mut Frame, area: Rect, model: &Model) {
                     issue.message.clone()
                 };
 
-                let line_info = issue
-                    .line
-                    .map(|l| format!(" (L{})", l))
-                    .unwrap_or_default();
+                let line_info = issue.line.map(|l| format!(" (L{})", l)).unwrap_or_default();
 
                 let issue_line = Line::from(vec![
                     Span::raw("   "), // Indent
@@ -163,7 +163,11 @@ mod tests {
             .unwrap();
 
         let buffer = terminal.backend().buffer();
-        let content = buffer.content().iter().map(|c| c.symbol()).collect::<String>();
+        let content = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
         // Should contain analysis title
         assert!(content.contains("Analysis"));
     }
@@ -182,7 +186,11 @@ mod tests {
             .unwrap();
 
         let buffer = terminal.backend().buffer();
-        let content = buffer.content().iter().map(|c| c.symbol()).collect::<String>();
+        let content = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
         assert!(content.contains("No issues"));
     }
 }
