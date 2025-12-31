@@ -43,3 +43,5 @@ test_prompt.txt
 # bv (beads viewer) local config and caches
 .bv/
 .claude/*.local.*
+# Git worktrees directory
+/worktrees/
