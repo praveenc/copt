@@ -106,9 +106,13 @@ struct Cli {
     #[arg(long, value_delimiter = ',', value_name = "CAT")]
     check: Option<Vec<String>>,
 
-    /// Interactive multi-line input
+    /// Launch full-screen interactive TUI mode
     #[arg(short, long)]
     interactive: bool,
+
+    /// Open editor for multi-line input
+    #[arg(short = 'e', long)]
+    editor: bool,
 
     /// Skip connectivity check
     #[arg(long)]
@@ -142,6 +146,15 @@ async fn main() -> Result<()> {
     // Parse CLI arguments
     let cli = Cli::parse();
 
+    // Interactive mode requires TTY
+    if cli.interactive && !io::stdout().is_terminal() {
+        eprintln!(
+            "{} Interactive mode requires a terminal. Use without -i for piped output.",
+            "Error:".red().bold()
+        );
+        std::process::exit(1);
+    }
+
     // Check provider connectivity on first use (unless offline or skipped)
     if !cli.offline && !cli.skip_connectivity_check {
         check_provider_connectivity(&cli).await?;
@@ -158,11 +171,14 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    // Run the optimization
-    let result = run_optimization(&cli, &prompt).await?;
-
-    // Handle output
-    handle_output(&cli, &result).await?;
+    // Run in interactive TUI mode or standard mode
+    if cli.interactive {
+        run_interactive_mode(&cli, &prompt).await?;
+    } else {
+        // Standard mode
+        let result = run_optimization(&cli, &prompt).await?;
+        handle_output(&cli, &result).await?;
+    }
 
     Ok(())
 }
@@ -246,16 +262,16 @@ async fn get_input_prompt(cli: &Cli) -> Result<String> {
         return Ok(buffer);
     }
 
-    if cli.interactive {
-        return interactive_input().await;
+    if cli.editor {
+        return editor_input().await;
     }
 
     // No input provided
     Ok(String::new())
 }
 
-/// Interactive multi-line input mode
-async fn interactive_input() -> Result<String> {
+/// Editor-based multi-line input mode
+async fn editor_input() -> Result<String> {
     use dialoguer::Editor;
 
     println!("\n📝 Opening editor for multi-line input...\n");
@@ -523,6 +539,113 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
 
         if !cli.quiet && cli.format != OutputFormat::Quiet {
             tui::stats::print_save_success(&path.display().to_string(), false);
+        }
+    }
+
+    Ok(())
+}
+
+/// Run the full-screen interactive TUI mode
+async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
+    use tui::model::{AppPhase, ErrorState, Model, RenderMode};
+
+    let start_time = std::time::Instant::now();
+
+    // Create the model
+    let mut model = Model::new();
+    model.render_mode = RenderMode::Interactive;
+    model.offline_mode = cli.offline;
+    model.original_prompt = prompt.to_string();
+    model.input_file = cli.file.as_ref().map(|p| p.display().to_string());
+
+    // Analyze the prompt
+    model.phase = AppPhase::Analyzing;
+    let issues = analyzer::analyze(prompt, cli.check.as_deref())?;
+    model.set_issues(&issues);
+
+    // If not offline and has issues, optimize with LLM
+    if !cli.offline && !cli.analyze && !issues.is_empty() {
+        model.phase = AppPhase::Optimizing;
+
+        // Run LLM optimization
+        let client: Box<dyn llm::LlmClient> = match cli.provider {
+            Provider::Anthropic => Box::new(llm::AnthropicClient::new(
+                std::env::var("ANTHROPIC_API_KEY")
+                    .context("ANTHROPIC_API_KEY environment variable not set")?,
+            )?),
+            Provider::Bedrock => Box::new(llm::BedrockClient::new(&cli.region).await?),
+        };
+
+        match optimizer::optimize_with_llm(prompt, &issues, client.as_ref(), &cli.model).await {
+            Ok(optimized) => {
+                let processing_time = start_time.elapsed().as_millis() as u64;
+
+                let stats = OptimizationStats {
+                    original_chars: prompt.len(),
+                    optimized_chars: optimized.len(),
+                    original_tokens: utils::count_tokens(prompt),
+                    optimized_tokens: utils::count_tokens(&optimized),
+                    rules_applied: issues.len(),
+                    categories_improved: issues
+                        .iter()
+                        .map(|i| i.category.as_str())
+                        .collect::<std::collections::HashSet<_>>()
+                        .len(),
+                    processing_time_ms: processing_time,
+                    provider: format!("{:?}", cli.provider).to_lowercase(),
+                    model: cli.model.clone(),
+                };
+
+                model.set_optimization_result(optimized, stats);
+            }
+            Err(e) => {
+                model.set_error(ErrorState::new(format!("Optimization failed: {}", e)));
+            }
+        }
+    } else if cli.offline || cli.analyze {
+        // In offline/analyze mode, just show analysis results
+        model.phase = AppPhase::AnalysisDone;
+    } else {
+        // No issues found
+        model.phase = AppPhase::Done;
+        let stats = OptimizationStats {
+            original_chars: prompt.len(),
+            optimized_chars: prompt.len(),
+            original_tokens: utils::count_tokens(prompt),
+            optimized_tokens: utils::count_tokens(prompt),
+            processing_time_ms: start_time.elapsed().as_millis() as u64,
+            provider: format!("{:?}", cli.provider).to_lowercase(),
+            model: cli.model.clone(),
+            ..Default::default()
+        };
+        model.optimized_prompt = Some(prompt.to_string());
+        model.stats = Some(stats);
+    }
+
+    // Run the interactive TUI
+    tui::app::run_interactive(&mut model)?;
+
+    // After TUI exits, handle auto-save if we have results
+    if let Some(ref optimized) = model.optimized_prompt {
+        if !cli.no_save && !cli.offline {
+            let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+            let filename = format!("optimized_{}.txt", timestamp);
+            let output_path = cli.output_dir.join(filename);
+
+            // Create output directory if it doesn't exist
+            if let Some(parent) = output_path.parent() {
+                tokio::fs::create_dir_all(parent).await?;
+            }
+
+            // Write the optimized prompt
+            tokio::fs::write(&output_path, optimized).await?;
+
+            // Print save message after TUI exits
+            println!(
+                "\n{} Saved to: {}\n",
+                "✓".green(),
+                output_path.display().to_string().white().bold()
+            );
         }
     }
 
