@@ -59,7 +59,7 @@ impl IconSet {
             folder_open: "\u{25bc}",   // ▼
             folder_closed: "\u{25b6}", // ▶
             file: "\u{2022}",          // •
-            chart: "\u{2593}",         // ▓
+            chart: "\u{1f4ca}",        // 📊
             gear: "\u{2699}",          // ⚙
             sparkles: "\u{2728}",      // ✨
             inbox: "\u{1f4e5}",        // 📥
