@@ -3,10 +3,12 @@
 //! Provides beautiful, colorful terminal output for the prompt optimizer.
 //! Uses a clean, box-free design for reliable alignment across all terminals.
 
+#![allow(dead_code)]
+
 use colored::Colorize;
 use std::path::PathBuf;
 
-use super::icons;
+use super::legacy_icons as icons;
 use crate::analyzer::{Issue, Severity};
 
 /// Print the application header

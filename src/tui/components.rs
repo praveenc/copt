@@ -2,6 +2,8 @@
 //!
 //! This module provides common UI components used throughout the optimizer.
 
+#![allow(dead_code)]
+
 use colored::Colorize;
 
 /// A progress bar component

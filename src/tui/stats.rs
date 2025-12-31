@@ -2,9 +2,11 @@
 //!
 //! Displays optimization statistics in a clean, box-free format.
 
+#![allow(dead_code)]
+
 use colored::Colorize;
 
-use super::icons;
+use super::legacy_icons as icons;
 use crate::OptimizationStats;
 
 /// Print optimization statistics
