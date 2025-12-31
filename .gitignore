@@ -39,3 +39,7 @@ images/tmp/
 
 # Test prompt files (if any)
 test_prompt.txt
+
+# bv (beads viewer) local config and caches
+.bv/
+.claude/*.local.*
