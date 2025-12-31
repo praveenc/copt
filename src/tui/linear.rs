@@ -40,28 +40,40 @@ pub fn render_stats_only(model: &Model) -> io::Result<()> {
     render_stats(&mut stdout, model)
 }
 
+/// ASCII art logo for COPT
+const LOGO: &str = r#"
+   ██████╗ ██████╗ ██████╗ ████████╗
+  ██╔════╝██╔═══██╗██╔══██╗╚══██╔══╝
+  ██║     ██║   ██║██████╔╝   ██║
+  ██║     ██║   ██║██╔═══╝    ██║
+  ╚██████╗╚██████╔╝██║        ██║
+   ╚═════╝ ╚═════╝ ╚═╝        ╚═╝
+"#;
+
 /// Render the header
 fn render_header(w: &mut impl Write, model: &Model) -> io::Result<()> {
-    let icons = icons();
     let version = env!("CARGO_PKG_VERSION");
 
-    writeln!(w)?;
-    write!(
-        w,
-        "  {}  {}",
-        icons.lightning.cyan(),
-        "CLAUDE PROMPT OPTIMIZER".cyan().bold()
-    )?;
+    // Print ASCII logo in cyan
+    for line in LOGO.lines().skip(1) {
+        // Skip empty first line
+        if !line.is_empty() {
+            writeln!(w, "{}", line.cyan())?;
+        }
+    }
+
+    // Subtitle
+    write!(w, "  {}", "Claude Prompt Optimizer".white().bold())?;
 
     if model.offline_mode {
-        writeln!(w, " {}", "[OFFLINE MODE]".yellow())?;
+        writeln!(w, " {}", "[OFFLINE]".yellow())?;
     } else {
         writeln!(w)?;
     }
 
     writeln!(
         w,
-        "     {}",
+        "  {}",
         format!("v{} • Optimize prompts for Claude 4.5", version).bright_black()
     )?;
     writeln!(w)?;
@@ -364,7 +376,7 @@ mod tests {
         let model = Model::default();
         render_header(&mut buf, &model).unwrap();
         let output = String::from_utf8(buf).unwrap();
-        assert!(output.contains("CLAUDE PROMPT OPTIMIZER"));
+        assert!(output.contains("Claude Prompt Optimizer"));
     }
 
     #[test]
