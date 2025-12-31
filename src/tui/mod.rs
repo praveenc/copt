@@ -1,17 +1,72 @@
 //! Terminal User Interface module
 //!
-//! Provides beautiful, colorful terminal output for the prompt optimizer.
-//! Uses the `colored` and `console` crates for styling.
+//! Provides a beautiful, interactive terminal UI using ratatui.
+//! Implements the Elm (MVU) architecture for state management.
+//!
+//! # Architecture
+//!
+//! - `model.rs` - State definitions (Model)
+//! - `update.rs` - Event handling (Update)
+//! - `view.rs` - Rendering dispatch (View)
+//! - `app.rs` - Main event loop
+//! - `widgets/` - Individual UI components
+//!
+//! # Modes
+//!
+//! - **Interactive**: Full-screen ratatui UI with keyboard navigation
+//! - **Linear**: Enhanced output that scrolls (default for TTY)
+//! - **Plain**: Basic output for non-TTY (piped)
+//! - **Json/Quiet**: Handled by main.rs, not this module
 
-#![allow(dead_code)]
+// New ratatui-based modules
+pub mod app;
+pub mod icons;
+pub mod linear;
+pub mod model;
+pub mod terminal;
+pub mod theme;
+pub mod update;
+pub mod view;
+pub mod widgets;
 
+// Legacy icon constants for backward compatibility with old modules
+// The old modules (renderer.rs, stats.rs, diff.rs) use these
+pub mod legacy_icons {
+    pub const CHECK: &str = "✓";
+    pub const CROSS: &str = "✗";
+    pub const WARNING: &str = "⚠";
+    pub const INFO: &str = "ℹ";
+    pub const LIGHTNING: &str = "⚡";
+    pub const INBOX: &str = "📥";
+    pub const CHART: &str = "📊";
+    pub const GEAR: &str = "⚙";
+    pub const ROCKET: &str = "🚀";
+    pub const SPARKLES: &str = "✨";
+    pub const PENCIL: &str = "📝";
+    pub const FOLDER: &str = "📁";
+    pub const FILE: &str = "📄";
+    pub const CLOCK: &str = "⏱";
+    pub const PLUG: &str = "🔌";
+    pub const ROBOT: &str = "🤖";
+}
+
+// Re-export new types
+pub use app::{detect_render_mode, run};
+pub use model::{Model, RenderMode, View};
+
+// ==============================================================
+// Legacy modules and functions for backward compatibility
+// These will be removed once main.rs is fully migrated
+// ==============================================================
+
+// Keep old modules during migration
 pub mod components;
 pub mod diff;
 pub mod renderer;
 pub mod spinner;
 pub mod stats;
 
-// Re-export commonly used functions
+// Re-export legacy functions
 pub use diff::print_diff;
 pub use renderer::{print_analysis, print_header, print_input_info};
 pub use stats::print_stats;
@@ -29,26 +84,6 @@ pub mod chars {
     pub const T_RIGHT: &str = "├";
     pub const T_LEFT: &str = "┤";
     pub const CROSS: &str = "┼";
-}
-
-/// Icon constants
-pub mod icons {
-    pub const CHECK: &str = "✓";
-    pub const CROSS: &str = "✗";
-    pub const WARNING: &str = "⚠";
-    pub const INFO: &str = "ℹ";
-    pub const LIGHTNING: &str = "⚡";
-    pub const INBOX: &str = "📥";
-    pub const CHART: &str = "📊";
-    pub const GEAR: &str = "⚙";
-    pub const ROCKET: &str = "🚀";
-    pub const SPARKLES: &str = "✨";
-    pub const PENCIL: &str = "📝";
-    pub const FOLDER: &str = "📁";
-    pub const FILE: &str = "📄";
-    pub const CLOCK: &str = "⏱";
-    pub const PLUG: &str = "🔌";
-    pub const ROBOT: &str = "🤖";
 }
 
 /// Terminal width utilities

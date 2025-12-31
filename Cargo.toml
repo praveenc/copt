@@ -21,6 +21,7 @@ indicatif = { version = "0.17", features = ["tokio"] }
 console = "0.15"
 dialoguer = { version = "0.11", features = ["fuzzy-select"] }
 colored = "2.1"
+ctrlc = "3.4"
 
 # Async Runtime & HTTP
 tokio = { version = "1.40", features = ["full"] }

@@ -5,7 +5,7 @@
 use colored::Colorize;
 use similar::{ChangeTag, TextDiff};
 
-use super::{chars, icons, terminal_width};
+use super::{chars, legacy_icons as icons, terminal_width};
 
 /// Print a side-by-side diff of original and optimized prompts
 pub fn print_diff(original: &str, optimized: &str) {

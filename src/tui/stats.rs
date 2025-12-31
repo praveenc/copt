@@ -4,7 +4,7 @@
 
 use colored::Colorize;
 
-use super::icons;
+use super::legacy_icons as icons;
 use crate::OptimizationStats;
 
 /// Print optimization statistics

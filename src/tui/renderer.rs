@@ -6,7 +6,7 @@
 use colored::Colorize;
 use std::path::PathBuf;
 
-use super::icons;
+use super::legacy_icons as icons;
 use crate::analyzer::{Issue, Severity};
 
 /// Print the application header
