@@ -58,15 +58,37 @@ src/
 │   ├── mod.rs        # LlmClient trait, OPTIMIZER_SYSTEM_PROMPT
 │   ├── anthropic.rs  # Anthropic API client
 │   └── bedrock.rs    # AWS Bedrock client
-├── tui/              # Terminal UI components
-│   ├── renderer.rs   # Main rendering functions
-│   ├── spinner.rs    # Progress indicators
-│   ├── stats.rs      # Statistics display
-│   ├── diff.rs       # Before/after diff display
-│   └── components.rs # Reusable UI components
+├── tui/              # Terminal UI (ratatui-based, Elm MVU architecture)
+│   ├── mod.rs        # Module exports and legacy compatibility
+│   ├── app.rs        # Main event loop for interactive mode
+│   ├── model.rs      # State definitions (Model) - MVU pattern
+│   ├── update.rs     # Event handling (Update) - MVU pattern
+│   ├── view.rs       # Render dispatch (View) - MVU pattern
+│   ├── linear.rs     # Non-interactive enhanced output (default)
+│   ├── terminal.rs   # Terminal init/restore with panic hooks
+│   ├── theme.rs      # Single theme for dark/light terminals
+│   ├── icons.rs      # Nerd Font icons with Unicode/ASCII fallback
+│   ├── widgets/      # Modular UI components
+│   │   ├── header.rs     # ASCII art banner
+│   │   ├── analysis.rs   # Collapsible issue tree
+│   │   ├── progress.rs   # Optimization gauge
+│   │   ├── dashboard.rs  # Stats with bar charts
+│   │   ├── diff.rs       # Side-by-side comparison
+│   │   ├── status_bar.rs # Keyboard hints
+│   │   ├── help.rs       # Full keyboard shortcuts
+│   │   ├── error_modal.rs # Modal error dialog
+│   │   └── minimal.rs    # Small terminal fallback
+│   └── (legacy)      # renderer.rs, spinner.rs, stats.rs, diff.rs, components.rs
 ├── rules/            # Rule definitions
 └── utils/            # Utilities (token counting via tiktoken-rs, file handling)
 ```
+
+### TUI Modes
+
+- **Default (Linear)**: Enhanced scrolling output with ASCII art banner
+- **Interactive (`-i`)**: Full-screen ratatui TUI with keyboard navigation
+- **Quiet (`-q`)**: Prompt output only
+- **JSON (`--format json`)**: Machine-readable output
 
 ## Key Data Flow
 

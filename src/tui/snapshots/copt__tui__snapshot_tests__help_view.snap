@@ -1,0 +1,29 @@
+---
+source: src/tui/snapshot_tests.rs
+assertion_line: 123
+expression: output
+---
+⚡  CLAUDE PROMPT OPTIMIZER v0.2.0                                               
+                                                                                
+────────────────────────────────────────────────────────────────────────────────
+┌ Keyboard Shortcuts ──────────────────────────────────────────────────────────┐
+│NAVIGATION                                                                    │
+│                                                                              │
+│  ↑/↓        Move selection up/down                                           │
+│  Enter      Expand/collapse category                                         │
+│  PgUp/PgDn  Scroll content                                                   │
+│  Home       Go to top                                                        │
+│                                                                              │
+│VIEWS                                                                         │
+│                                                                              │
+│  d          Toggle diff view                                                 │
+│  ?          Toggle help (this screen)                                        │
+│  Esc        Return to main view                                              │
+│                                                                              │
+│ACTIONS                                                                       │
+│                                                                              │
+│  c          Copy optimized prompt to clipboard                               │
+│  s          Save optimized prompt to file                                    │
+│  r          Re-run optimization                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+Esc:return  q:quit

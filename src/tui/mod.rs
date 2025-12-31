@@ -29,6 +29,10 @@ pub mod update;
 pub mod view;
 pub mod widgets;
 
+// Snapshot tests
+#[cfg(test)]
+mod snapshot_tests;
+
 // Legacy icon constants for backward compatibility with old modules
 // The old modules (renderer.rs, stats.rs, diff.rs) use these
 #[allow(dead_code)]
@@ -52,11 +56,12 @@ pub mod legacy_icons {
 // These will be removed once main.rs is fully migrated
 // ==============================================================
 
-// Keep old modules during migration
-pub mod components;
+// Keep legacy modules that are still used by main.rs
+// - renderer: start_optimizing_spinner, stop_optimizing_spinner
+// - diff: print_diff
+// - stats: print_save_success
 pub mod diff;
 pub mod renderer;
-pub mod spinner;
 pub mod stats;
 
 // Note: Legacy modules are still used by main.rs for:

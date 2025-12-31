@@ -239,11 +239,36 @@ copt -f prompt.txt -p anthropic
 # JSON output for scripting
 copt -f prompt.txt --format json
 
+# Interactive TUI mode
+copt -f prompt.txt --interactive
+
 # Batch process multiple files
 for f in prompts/*.txt; do
   copt -f "$f" -o "optimized/$(basename $f)"
 done
 ```
+
+### Interactive Mode
+
+The `--interactive` flag launches a full-featured terminal UI with:
+
+- **Real-time progress** — See optimization status as it happens
+- **Collapsible issue tree** — Browse analysis results by category
+- **Side-by-side diff** — Compare original and optimized prompts
+- **Keyboard navigation** — Full keyboard shortcuts for efficiency
+- **Clipboard support** — Copy optimized prompt with `c`
+
+**Keyboard shortcuts in interactive mode:**
+
+| Key       | Action                    |
+| --------- | ------------------------- |
+| `q`       | Quit                      |
+| `d`       | Toggle diff view          |
+| `?`       | Show help                 |
+| `c`       | Copy optimized to clipboard |
+| `↑/↓`     | Navigate issues           |
+| `Enter`   | Expand/collapse category  |
+| `Tab`     | Switch panels             |
 
 ---
 
@@ -351,6 +376,8 @@ RUST_LOG=debug cargo run -- -f test.txt --offline
 
 - [Anthropic](https://www.anthropic.com/) — Claude models and [prompt engineering best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-4-best-practices)
 - [clap](https://github.com/clap-rs/clap) — CLI argument parsing
+- [ratatui](https://github.com/ratatui/ratatui) — Terminal UI framework
+- [crossterm](https://github.com/crossterm-rs/crossterm) — Cross-platform terminal manipulation
 - [colored](https://github.com/mackwic/colored) — Terminal colors
 - [indicatif](https://github.com/console-rs/indicatif) — Progress indicators
 

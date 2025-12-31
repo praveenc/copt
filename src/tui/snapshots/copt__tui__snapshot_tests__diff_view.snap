@@ -1,0 +1,29 @@
+---
+source: src/tui/snapshot_tests.rs
+assertion_line: 115
+expression: output
+---
+⚡  CLAUDE PROMPT OPTIMIZER v0.2.0                                               
+                                                                                
+────────────────────────────────────────────────────────────────────────────────
+┌ ✨  Changes ──────────────────────────────────────────────────────────────────┐
+│┌• Original───────────────────────────┐┌✨  Optimized─────────────────────────┐│
+││- You should try to think carefully  ││+ Please analyze this problem        ││
+││about this problem.                  ││systematically and provide a detailed││
+││                                     ││solution.                            ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+││                                     ││                                     ││
+│└─────────────────────────────────────┘└─────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────────────────────┘
+Esc:return  ↑↓:scroll  c:copy  s:save  q:quit
