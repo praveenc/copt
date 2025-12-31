@@ -8,6 +8,8 @@ on:
       - 'docs/**'
       - 'LICENSE'
       - '.gitignore'
+      - '.beads/**'
+      - '.claude/**'
   pull_request:
     branches: [main]
     paths-ignore:
@@ -15,6 +17,8 @@ on:
       - 'docs/**'
       - 'LICENSE'
       - '.gitignore'
+      - '.beads/**'
+      - '.claude/**'
 
 env:
   CARGO_TERM_COLOR: always
