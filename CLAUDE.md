@@ -191,3 +191,50 @@ See `docs/RULES.md` for complete rule documentation.
 2. Implement the `LlmClient` trait (see `anthropic.rs` or `bedrock.rs`)
 3. Add to `src/llm/mod.rs` exports
 4. Add CLI option in `src/main.rs` `Provider` enum
+
+## Release Process
+
+When bumping the version for a new release:
+
+1. **Update version in `Cargo.toml`**
+   ```bash
+   # Edit Cargo.toml: version = "X.Y.Z"
+   ```
+
+2. **Update snapshot tests** (critical - CI will fail otherwise!)
+   ```bash
+   # Option A: Auto-accept all snapshot changes
+   cargo insta test --accept
+   
+   # Option B: Manually update snapshots
+   sed -i '' 's/vOLD_VERSION/vNEW_VERSION/g' src/tui/snapshots/*.snap
+   ```
+   
+   The TUI snapshots in `src/tui/snapshots/` contain the version string in the header.
+   Forgetting this step will cause 6-7 snapshot tests to fail in CI.
+
+3. **Update CHANGELOG.md**
+   - Change `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`
+   - Add new `[Unreleased]` section at top
+   - Update comparison links at bottom
+
+4. **Run full test suite**
+   ```bash
+   make ci
+   ```
+
+5. **Commit, tag, and push**
+   ```bash
+   docker exec my-git-workspace git -C /workspace/repos/copt add -A
+   docker exec my-git-workspace git -C /workspace/repos/copt commit -m "chore: bump version to X.Y.Z"
+   docker exec my-git-workspace git -C /workspace/repos/copt tag -a vX.Y.Z -m "Release vX.Y.Z - Description"
+   docker exec my-git-workspace git -C /workspace/repos/copt push origin main --tags
+   ```
+
+6. **Create GitHub release**
+   ```bash
+   docker exec my-git-workspace gh release create vX.Y.Z \
+     --repo praveenc/copt \
+     --title "vX.Y.Z - Release Title" \
+     --notes "Release notes here"
+   ```
