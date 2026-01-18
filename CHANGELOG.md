@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Save original prompt for comparison**: When optimizing, both original and optimized prompts are now saved
+    - `original_{timestamp}.txt` - The original prompt text
+    - `optimized_{timestamp}.txt` - The optimized prompt text
+    - Metadata JSON now includes `files` object with paths to both files
+- **Makefile for development workflow**:
+    - `make ci` - CI pipeline: fmt-check → lint → build → test (strict, no auto-fix)
+    - `make check` - Local dev: fmt → lint → test (auto-fixes formatting)
+    - `make build`, `make release`, `make test`, `make lint`, `make fmt`, `make clean`
+
+### Changed
+
+- **Documentation**: Updated CLAUDE.md with Makefile section and container instructions
+- **Release workflow**: Added `/release` slash command for Claude Code with full automation
+
+## [0.2.0] - 2025-01-10
+
+### Added
+
+- **Full-screen interactive TUI mode** (`-i` / `--interactive`):
+    - Built with ratatui for professional terminal UI
+    - Elm-style MVU (Model-View-Update) architecture
+    - Collapsible issue tree with keyboard navigation
+    - Side-by-side diff view for comparing original and optimized prompts
+    - Real-time progress indicators during optimization
+    - Dashboard with visual bar charts for token statistics
+    - Modal error dialogs and help overlay
+    - Keyboard shortcuts: `q` quit, `d` diff, `?` help, `c` copy, `↑/↓` navigate
+- **ASCII art logo banner** in header for enhanced branding
+- **Modular widget system** in `tui/widgets/`:
+    - `header.rs` - ASCII art banner
+    - `analysis.rs` - Collapsible issue tree
+    - `progress.rs` - Optimization gauge
+    - `dashboard.rs` - Stats with bar charts
+    - `diff.rs` - Side-by-side comparison
+    - `status_bar.rs` - Keyboard hints
+    - `help.rs` - Full keyboard shortcuts overlay
+    - `error_modal.rs` - Modal error dialog
+    - `minimal.rs` - Small terminal fallback
+
+### Changed
+
+- **Default output mode**: Now uses enhanced linear renderer with ASCII art banner
+- **TUI architecture**: Migrated from ad-hoc rendering to structured ratatui framework
+- **Theme system**: Single unified theme for both dark and light terminals
+- **Icon system**: Nerd Font icons with Unicode/ASCII fallback detection
+
+### Technical
+
+- Added ratatui 0.28 and crossterm 0.28 dependencies
+- Test suite expanded to 95 tests
+- Added snapshot tests for TUI rendering
+
 ## [0.1.1] - 2025-12-28
 
 ### Added
@@ -127,6 +181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/your-org/copt/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/your-org/copt/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/your-org/copt/releases/tag/v0.1.0
+[Unreleased]: https://github.com/praveenc/copt/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/praveenc/copt/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/praveenc/copt/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/praveenc/copt/releases/tag/v0.1.0
