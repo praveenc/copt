@@ -3,7 +3,7 @@ source: src/tui/snapshot_tests.rs
 assertion_line: 115
 expression: output
 ---
-⚡  CLAUDE PROMPT OPTIMIZER v0.2.0                                               
+⚡  CLAUDE PROMPT OPTIMIZER v0.2.1                                               
                                                                                 
 ────────────────────────────────────────────────────────────────────────────────
 ┌ ✨  Changes ──────────────────────────────────────────────────────────────────┐
