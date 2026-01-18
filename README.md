@@ -309,6 +309,8 @@ When a vague prompt is detected (EXP005/EXP006), a **suggestion modal** appears 
 | `d`       | Toggle diff view            |
 | `?`       | Show help                   |
 | `c`       | Copy optimized to clipboard |
+| `s`       | Save optimized to file      |
+| `e`       | Open optimized in editor    |
 | `↑/↓`     | Navigate issues/suggestions |
 | `Space`   | Toggle suggestion checkbox  |
 | `Enter`   | Apply / Expand-collapse     |

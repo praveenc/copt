@@ -36,14 +36,16 @@ Repo path inside container: `/workspace/repos/copt`
 ### Makefile (Preferred)
 
 ```bash
-make ci       # CI pipeline: fmt-check → lint → build → test (strict, no auto-fix)
-make check    # Local dev: fmt → lint → test (auto-fixes formatting)
-make build    # Debug build
-make release  # Release build (optimized)
-make test     # Run all tests
-make lint     # Clippy with warnings as errors
-make fmt      # Auto-fix formatting
-make clean    # Clean build artifacts
+make ci          # CI pipeline (debug): fmt-check → lint → build → test
+make ci-debug    # Same as `make ci` (explicit debug build)
+make ci-release  # CI pipeline (release): fmt-check → lint → release → test
+make check       # Local dev: fmt → lint → test (auto-fixes formatting)
+make build       # Debug build
+make release     # Release build (optimized)
+make test        # Run all tests
+make lint        # Clippy with warnings as errors
+make fmt         # Auto-fix formatting
+make clean       # Clean build artifacts
 ```
 
 ### Direct Cargo Commands
