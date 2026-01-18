@@ -88,7 +88,27 @@ cat prompt.txt | copt
 
 # Analyze only (no API calls)
 copt -f prompt.txt --offline
+
+# Full-screen interactive TUI
+copt -f prompt.txt -i
 ```
+
+### 3. Auto-Suggest for Vague Prompts
+
+When copt detects a **vague prompt** (role-only definitions or open-ended instructions), it automatically offers interactive suggestions to improve your prompt:
+
+```
+  ⚠  Vague prompt detected
+
+     • EXP005: Role-only prompt without specific action directives
+     • EXP006: Open-ended instruction without boundaries
+
+  ? Would you like to add specific improvements to this prompt? (y/N)
+```
+
+Select improvements like response format, citation requirements, or scope boundaries — all appended to your prompt automatically.
+
+Use `--no-suggest` to disable this for scripting/CI pipelines.
 
 ---
 
@@ -96,7 +116,7 @@ copt -f prompt.txt --offline
 
 ```
   ⚡  CLAUDE PROMPT OPTIMIZER
-     v0.1.1 • Optimize prompts for Claude 4.5
+     v0.2.1 • Optimize prompts for Claude 4.5
 
   📥  Input: prompt.txt (847 chars, 215 tokens)
 
@@ -104,11 +124,12 @@ copt -f prompt.txt --offline
   📊  Analysis Results
   ──────────────────────────────────────────────────────────────────────
 
-  Found 2 warnings, 1 info across 2 categories
+  Found 3 warnings, 1 info across 2 categories
 
-  ●  Explicitness (2 issues)
+  ●  Explicitness (3 issues)
      ⚠ EXP001 Vague instruction detected
-     ⚠ EXP003 Indirect command - Claude 4.5 prefers direct commands
+     ⚠ EXP005 Role-only prompt without specific action directives
+     ⚠ EXP006 Open-ended instruction without boundaries
 
   ●  Style (1 issue)
      ℹ STY001 Negative instruction detected (3 lines)
@@ -217,7 +238,8 @@ Options:
       --analyze                  Analyze only, no optimization
       --offline                  Offline mode (no API calls)
       --check <CAT>              Check specific categories
-  -i, --interactive              Interactive multi-line input
+      --no-suggest               Disable auto-suggestions for vague prompts
+  -i, --interactive              Full-screen interactive TUI mode
       --skip-connectivity-check  Skip connectivity check
   -v, --verbose                  Verbose output
   -h, --help                     Print help
@@ -232,6 +254,9 @@ copt -f prompt.txt --offline
 
 # Optimize and see the diff
 copt -f prompt.txt --diff --show-prompt
+
+# Disable auto-suggestions (for scripting/CI)
+copt -f prompt.txt --no-suggest
 
 # Optimize with Anthropic API
 copt -f prompt.txt -p anthropic
@@ -258,27 +283,30 @@ The `--interactive` flag launches a full-featured terminal UI with:
 - **Keyboard navigation** — Full keyboard shortcuts for efficiency
 - **Clipboard support** — Copy optimized prompt with `c`
 
+When a vague prompt is detected (EXP005/EXP006), a **suggestion modal** appears automatically, allowing you to select improvements to add to your prompt.
+
 **Keyboard shortcuts in interactive mode:**
 
-| Key       | Action                    |
-| --------- | ------------------------- |
-| `q`       | Quit                      |
-| `d`       | Toggle diff view          |
-| `?`       | Show help                 |
+| Key       | Action                      |
+| --------- | --------------------------- |
+| `q`       | Quit                        |
+| `d`       | Toggle diff view            |
+| `?`       | Show help                   |
 | `c`       | Copy optimized to clipboard |
-| `↑/↓`     | Navigate issues           |
-| `Enter`   | Expand/collapse category  |
-| `Tab`     | Switch panels             |
+| `↑/↓`     | Navigate issues/suggestions |
+| `Space`   | Toggle suggestion checkbox  |
+| `Enter`   | Apply / Expand-collapse     |
+| `Esc`     | Dismiss modal / Go back     |
 
 ---
 
 ## Analysis Rules
 
-copt analyzes prompts across 8 categories with 25+ rules:
+copt analyzes prompts across 8 categories with 27 rules:
 
 | Category         | Rules      | What It Catches                                 |
 | ---------------- | ---------- | ----------------------------------------------- |
-| **Explicitness** | EXP001-004 | Vague instructions, missing context             |
+| **Explicitness** | EXP001-006 | Vague instructions, role-only prompts, open-ended instructions |
 | **Style**        | STY001-004 | Negative framing, aggressive caps, "think" word |
 | **Tools**        | TUL001-003 | Missing action directives                       |
 | **Formatting**   | FMT001-003 | Missing output format specs                     |
