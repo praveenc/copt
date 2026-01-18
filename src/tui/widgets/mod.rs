@@ -22,6 +22,8 @@ pub use status_bar::{render_status_bar, render_status_bar_diff, render_status_ba
 // Additional utilities
 mod error_modal;
 mod minimal;
+mod suggest_modal;
 
 pub use error_modal::render_error_modal;
 pub use minimal::render_minimal_summary;
+pub use suggest_modal::{handle_suggest_modal_key, render_suggest_modal, SuggestModalState};

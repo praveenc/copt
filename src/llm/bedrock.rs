@@ -47,6 +47,8 @@ impl BedrockClient {
         let test_request = BedrockRequest {
             anthropic_version: "bedrock-2023-05-31".to_string(),
             max_tokens: 1,
+            temperature: None, // Use defaults for connectivity check
+            top_p: None,
             system: None,
             messages: vec![BedrockMessage {
                 role: "user".to_string(),
@@ -211,6 +213,8 @@ impl LlmClient for BedrockClient {
         let request_body = BedrockRequest {
             anthropic_version: "bedrock-2023-05-31".to_string(),
             max_tokens,
+            temperature: Some(0.3),
+            top_p: Some(0.95),
             system: Some(system.to_string()),
             messages: vec![BedrockMessage {
                 role: "user".to_string(),
@@ -263,6 +267,10 @@ impl LlmClient for BedrockClient {
 struct BedrockRequest {
     anthropic_version: String,
     max_tokens: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    top_p: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     system: Option<String>,
     messages: Vec<BedrockMessage>,

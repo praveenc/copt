@@ -17,11 +17,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `make ci` - CI pipeline: fmt-check → lint → build → test (strict, no auto-fix)
     - `make check` - Local dev: fmt → lint → test (auto-fixes formatting)
     - `make build`, `make release`, `make test`, `make lint`, `make fmt`, `make clean`
+- **Hybrid Analyzer Enhancement** (Phases 1-6):
+    - **XML-Aware Parsing**: Analyzer now extracts and preserves XML blocks (`<examples>`, `<example>`, `<instructions>`, etc.) before analysis, preventing false positives from example content
+    - **Prompt Type Classifier**: New `PromptType` enum (Coding, QaAssistant, Research, Creative, LongHorizon, General) with context-aware rule application - LHT rules no longer fire on simple Q&A prompts
+    - **EXP005 — Role-Only Prompt**: Detects prompts that define a role ("You are...") without specific action directives
+    - **EXP006 — Open-Ended Instructions**: Detects overly open-ended instructions ("answer any questions") without boundaries or format specs
+    - **Auto-Suggest for Vague Prompts**: Interactive suggestions now trigger automatically when running in a TTY and EXP005/EXP006 detected (no `--suggest` flag required)
+    - **TUI Suggest Modal** (Phase 5): Full-screen interactive mode (`-i`) now shows a modal dialog for vague prompts with checkbox selection, keyboard navigation (↑/↓/Space/Enter/Esc), and real-time selection count
+    - **LLM Prompt Type Awareness** (Phase 6): `OPTIMIZER_SYSTEM_PROMPT` now includes prompt-type-specific optimization guidance (Q&A → response format/citations, Coding → exploration directives, Research → structured approach, etc.)
+    - **XML Structure Preservation** (Phase 6): LLM optimizer now preserves and enhances existing XML blocks rather than removing them
+- **`--no-suggest` flag**: Disable auto-suggestions for scripting and CI/CD pipelines
 
 ### Changed
 
 - **Documentation**: Updated CLAUDE.md with Makefile section and container instructions
 - **Release workflow**: Added `/release` slash command for Claude Code with full automation
+- **FMT001 rule**: Now also triggers on `answer`, `respond`, `reply`, `address` keywords (expanded from just `write`/`generate`)
+
+### Technical
+
+- Test suite expanded to 114 tests (from 95)
+- New `src/cli/suggest.rs` module for interactive suggestion flow
+- New `src/tui/widgets/suggest_modal.rs` for TUI modal with `SuggestModalState`
+- Prompt classifier integrated into analyzer pipeline
+- `optimize_with_llm()` now accepts `PromptType` parameter for context-aware optimization
+- `build_optimization_message()` includes `<prompt_type>` tag for LLM context
+- TTY detection for smart auto-suggest behavior (`std::io::IsTerminal`)
+- LLM inference config: `temperature: 0.3`, `top_p: 0.95` for consistent, deterministic prompt rewrites
 
 ## [0.2.0] - 2025-01-10
 

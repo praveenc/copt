@@ -106,9 +106,13 @@ struct Cli {
     #[arg(long, value_delimiter = ',', value_name = "CAT")]
     check: Option<Vec<String>>,
 
-    /// Interactively suggest improvements for vague prompts
-    #[arg(long)]
+    /// Interactively suggest improvements for vague prompts (default when TTY)
+    #[arg(long, hide = true)]
     suggest: bool,
+
+    /// Disable auto-suggestions for vague prompts
+    #[arg(long)]
+    no_suggest: bool,
 
     /// Launch full-screen interactive TUI mode
     #[arg(short, long)]
@@ -341,13 +345,21 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
     // Analyze the prompt
     let issues = analyzer::analyze(prompt, cli.check.as_deref())?;
 
+    // Classify prompt type for context-aware LLM optimization
+    let prompt_type = analyzer::classify_prompt(prompt);
+
     // Update model with issues
     if let Some(ref mut m) = model {
         m.set_issues(&issues);
     }
 
-    // Interactive suggestions for vague prompts (EXP005/EXP006)
-    let prompt = if cli.suggest && cli::suggest::should_suggest(&issues) {
+    // Auto-suggest improvements for vague prompts (EXP005/EXP006)
+    // Triggers automatically when: TTY + vague prompt + not --no-suggest
+    let is_tty = io::stdout().is_terminal();
+    let should_auto_suggest =
+        (cli.suggest || is_tty) && !cli.no_suggest && cli::suggest::should_suggest(&issues);
+
+    let prompt = if should_auto_suggest {
         // Render header/analysis first so user sees context
         if let Some(ref mut m) = model {
             m.phase = AppPhase::AnalysisDone;
@@ -411,8 +423,8 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
         tui::linear::render(m)?;
     }
 
-    // Show suggestion hint in offline mode if vague prompt detected (and not using --suggest)
-    if cli.offline && !cli.suggest && cli::suggest::should_suggest(&issues) && !cli.quiet {
+    // Show suggestion hint in offline mode if vague prompt detected (only if suggestions were skipped)
+    if cli.offline && !should_auto_suggest && cli::suggest::should_suggest(&issues) && !cli.quiet {
         cli::suggest::print_suggestions(&issues);
     }
 
@@ -438,7 +450,8 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
         };
 
         let result =
-            optimizer::optimize_with_llm(prompt, &issues, client.as_ref(), &cli.model).await?;
+            optimizer::optimize_with_llm(prompt, &issues, client.as_ref(), &cli.model, prompt_type)
+                .await?;
         if let Some(s) = spinner {
             tui::renderer::stop_optimizing_spinner(s);
         }
@@ -650,7 +663,16 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
             Provider::Bedrock => Box::new(llm::BedrockClient::new(&cli.region).await?),
         };
 
-        match optimizer::optimize_with_llm(prompt, &issues, client.as_ref(), &cli.model).await {
+        let prompt_type = analyzer::classify_prompt(prompt);
+        match optimizer::optimize_with_llm(
+            prompt,
+            &issues,
+            client.as_ref(),
+            &cli.model,
+            prompt_type,
+        )
+        .await
+        {
             Ok(optimized) => {
                 let processing_time = start_time.elapsed().as_millis() as u64;
 

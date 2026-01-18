@@ -33,6 +33,11 @@ pub fn render(frame: &mut Frame, model: &Model) {
     if model.error.is_some() {
         widgets::render_error_modal(frame, model);
     }
+
+    // Render suggest modal if visible
+    if model.suggest_modal.visible {
+        widgets::render_suggest_modal(frame, &model.suggest_modal);
+    }
 }
 
 /// Render the main view with header, analysis, stats, and status bar

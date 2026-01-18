@@ -7,6 +7,7 @@
 use std::collections::HashSet;
 
 use crate::analyzer::Issue;
+use crate::tui::widgets::SuggestModalState;
 use crate::OptimizationStats;
 
 /// Current view being displayed
@@ -245,6 +246,8 @@ pub struct Model {
     pub terminal_width: u16,
     /// Terminal height (updated on resize)
     pub terminal_height: u16,
+    /// Suggest modal state for vague prompt improvements
+    pub suggest_modal: SuggestModalState,
 }
 
 impl Model {
@@ -266,6 +269,7 @@ impl Model {
             should_quit: false,
             terminal_width: 80,
             terminal_height: 24,
+            suggest_modal: SuggestModalState::default(),
         }
     }
 
@@ -273,6 +277,11 @@ impl Model {
     pub fn set_issues(&mut self, issues: &[Issue]) {
         self.issue_tree = IssueTree::from_issues(issues);
         self.phase = AppPhase::AnalysisDone;
+
+        // Initialize suggest modal if vague prompt detected
+        if SuggestModalState::should_show(issues) {
+            self.suggest_modal = SuggestModalState::from_issues(issues);
+        }
     }
 
     /// Set the optimization result

@@ -7,6 +7,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::model::{Model, View};
+use super::widgets::handle_suggest_modal_key;
 
 /// Messages that can be sent to update the model
 #[derive(Debug, Clone)]
@@ -48,6 +49,20 @@ fn handle_key(model: &mut Model, key: KeyEvent) -> bool {
     // Handle error modal first
     if model.error.is_some() {
         return handle_error_keys(model, key);
+    }
+
+    // Handle suggest modal if visible
+    if model.suggest_modal.visible {
+        let (handled, should_apply, _dismissed) =
+            handle_suggest_modal_key(&mut model.suggest_modal, key);
+        if handled {
+            // If user applied suggestions, update the prompt
+            if should_apply && model.suggest_modal.has_selections() {
+                let enhanced = model.suggest_modal.apply_to_prompt(&model.original_prompt);
+                model.original_prompt = enhanced;
+            }
+            return true;
+        }
     }
 
     // Global keys (work in any view)

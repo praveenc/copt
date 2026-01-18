@@ -7,7 +7,7 @@
 
 use anyhow::Result;
 
-use crate::analyzer::{Issue, Severity};
+use crate::analyzer::{Issue, PromptType, Severity};
 use crate::llm::{build_optimization_message, LlmClient, OPTIMIZER_SYSTEM_PROMPT};
 
 /// Static optimization using rule-based transformations
@@ -158,13 +158,16 @@ pub async fn optimize_with_llm(
     issues: &[Issue],
     client: &dyn LlmClient,
     model: &str,
+    prompt_type: PromptType,
 ) -> Result<String> {
     // First apply static transformations for quick wins
     let partially_optimized = optimize_static(prompt, issues)?;
 
-    // Build the user message with detected issues
+    // Build the user message with detected issues and prompt type
     let issues_summary = format_issues_for_llm(issues);
-    let user_message = build_optimization_message(&partially_optimized, &issues_summary);
+    let prompt_type_str = prompt_type_to_str(prompt_type);
+    let user_message =
+        build_optimization_message(&partially_optimized, &issues_summary, prompt_type_str);
 
     // Call the LLM
     let optimized = client
@@ -228,6 +231,18 @@ fn clean_llm_output(output: &str) -> String {
     }
 
     result
+}
+
+/// Convert PromptType enum to string for LLM context
+fn prompt_type_to_str(prompt_type: PromptType) -> &'static str {
+    match prompt_type {
+        PromptType::Coding => "coding",
+        PromptType::QaAssistant => "qa_assistant",
+        PromptType::Research => "research",
+        PromptType::Creative => "creative",
+        PromptType::LongHorizon => "long_horizon",
+        PromptType::General => "general",
+    }
 }
 
 /// Enhancement suggestions that can be appended to prompts based on detected patterns
@@ -334,5 +349,15 @@ mod tests {
             "Do this task"
         );
         assert_eq!(clean_llm_output("```\nCode here\n```"), "Code here");
+    }
+
+    #[test]
+    fn test_prompt_type_to_str() {
+        assert_eq!(prompt_type_to_str(PromptType::Coding), "coding");
+        assert_eq!(prompt_type_to_str(PromptType::QaAssistant), "qa_assistant");
+        assert_eq!(prompt_type_to_str(PromptType::Research), "research");
+        assert_eq!(prompt_type_to_str(PromptType::Creative), "creative");
+        assert_eq!(prompt_type_to_str(PromptType::LongHorizon), "long_horizon");
+        assert_eq!(prompt_type_to_str(PromptType::General), "general");
     }
 }

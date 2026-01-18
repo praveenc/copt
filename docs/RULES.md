@@ -47,7 +47,7 @@ The `copt` uses a rule-based engine to detect common anti-patterns in prompts an
 
 | Category        | Prefix | Description                  | Rule Count |
 | --------------- | ------ | ---------------------------- | ---------- |
-| Explicitness    | EXP    | Clear, specific instructions | 4          |
+| Explicitness    | EXP    | Clear, specific instructions | 6          |
 | Style           | STY    | Instruction tone and wording | 4          |
 | Tool Usage      | TUL    | Tool and action directives   | 3          |
 | Formatting      | FMT    | Output format specifications | 3          |
@@ -185,6 +185,97 @@ Research REST API design best practices. Focus on:
 
 Summarize your findings with 3-5 key recommendations for each area.
 ```
+
+---
+
+### EXP005 — Role-Only Prompt
+
+**Severity**: Warning
+
+**Description**: Prompts that define a role ("You are...") and a general task ("Your task is to...") but lack specific action directives. Claude 4.5 follows instructions precisely, so vague role definitions produce inconsistent results.
+
+**Detection Patterns**:
+
+- "You are a/an..." at the start of the prompt
+- "Your task is to..." without specific action guidance
+- Missing conditional handlers ("When the user asks...", "If...")
+- No format specification for responses
+
+**Examples**:
+
+❌ **Before**:
+
+```
+You are an experienced travel assistant. Your task is to answer questions
+about flights and travel.
+```
+
+✅ **After**:
+
+```
+You are an experienced travel assistant specializing in flight bookings.
+
+When the user asks about:
+- Flight availability: Provide options with prices, sorted by departure time
+- Booking changes: Explain the change fee and process step-by-step
+- Travel requirements: List visa, passport, and vaccination requirements
+
+Format responses with clear headers and bullet points. If information is
+unavailable, direct the user to the airline's customer service.
+```
+
+**Interactive Enhancement**: Use `--suggest` to add response format specs, citation requirements, and unknown information handling.
+
+---
+
+### EXP006 — Open-Ended Instructions
+
+**Severity**: Warning
+
+**Description**: Instructions that are too open-ended ("answer any questions", "help with anything") without defining boundaries, format, or depth expectations.
+
+**Detection Patterns**:
+
+- "answer any questions"
+- "respond to any queries"
+- "help with any/anything"
+- "handle any requests"
+- "assist with any"
+
+**Examples**:
+
+❌ **Before**:
+
+```
+Answer any questions the user might have about the product.
+```
+
+✅ **After**:
+
+```
+Answer user questions about ProductX. Focus on:
+
+In-scope topics:
+- Features and capabilities
+- Pricing and plans
+- Integration guides
+- Troubleshooting common issues
+
+Out-of-scope (redirect to support@example.com):
+- Billing disputes
+- Account deletion
+- Custom enterprise features
+
+Response format:
+- Simple questions: 1-3 sentences
+- How-to questions: Numbered steps
+- Comparisons: Bullet point lists
+
+If you don't know the answer, say "I don't have that information" and
+suggest contacting support.
+```
+
+**Interactive Enhancement**: Use `--suggest` to add scope boundaries, expertise level assumptions, and interaction style guidance.
 
 ---
 

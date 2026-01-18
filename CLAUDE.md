@@ -68,6 +68,8 @@ cargo clippy -- -D warnings  # Run clippy with warnings as errors
 cargo run -- --help
 cargo run -- "Your prompt here"
 cargo run -- -f prompt.txt --offline   # Analyze without API calls
+cargo run -- -f prompt.txt -i          # Full-screen interactive TUI mode
+cargo run -- -f prompt.txt --no-suggest  # Disable auto-suggestions for scripting
 RUST_LOG=debug cargo run -- -f test.txt --offline  # With debug logging
 ```
 
@@ -85,13 +87,29 @@ export AWS_REGION="us-west-2"
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
+## LLM Inference Configuration
+
+The LLM clients use these inference parameters for prompt optimization:
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| `temperature` | 0.3 | Low for consistent, deterministic rewrites |
+| `top_p` | 0.95 | Slight constraint on sampling for focused output |
+| `max_tokens` | 4096 | Sufficient for most prompt optimizations |
+
+These settings prioritize **reproducibility** over creativity — prompt optimization is a precision task where users expect similar inputs to produce similar outputs.
+
 ## Architecture
 
 ```bash
 src/
 ├── main.rs           # CLI entry point, argument parsing (clap), orchestration
-├── analyzer/         # Rule-based prompt analysis (25 rules across 8 categories)
-│   └── mod.rs        # analyze() function, rule implementations (EXP, STY, TUL, FMT, VRB, AGT, LHT, FED)
+├── analyzer/         # Rule-based prompt analysis (27 rules across 8 categories)
+│   └── mod.rs        # analyze() function, XML-aware parsing, prompt type classifier, rule implementations
+├── cli/              # CLI modules
+│   ├── mod.rs        # CLI argument definitions
+│   ├── config.rs     # Configuration file support
+│   └── suggest.rs    # Interactive suggestions for vague prompts (EXP005/EXP006)
 ├── optimizer/        # Optimization logic
 │   └── mod.rs        # optimize_static() and optimize_with_llm()
 ├── llm/              # LLM client implementations
@@ -141,7 +159,7 @@ src/
 
 Rules are identified by prefix (e.g., `EXP001`, `STY003`):
 
-- **EXP** (Explicitness): Vague instructions, indirect commands, missing context
+- **EXP** (Explicitness): Vague instructions, indirect commands, missing context, role-only prompts (EXP005), open-ended instructions (EXP006)
 - **STY** (Style): Negative framing, aggressive caps, "think" word sensitivity
 - **TUL** (Tools): Suggestion vs action, parallel execution guidance
 - **FMT** (Formatting): Output format specs, XML structure suggestions
@@ -151,6 +169,13 @@ Rules are identified by prefix (e.g., `EXP001`, `STY003`):
 - **FED** (Frontend): UI aesthetic guidance
 
 See `docs/RULES.md` for complete rule documentation.
+
+### Hybrid Analyzer Features
+
+- **XML-Aware Parsing**: Extracts `<examples>`, `<example>`, `<instructions>` blocks before analysis to prevent false positives
+- **Prompt Type Classifier**: Detects prompt type (Coding, QaAssistant, Research, Creative, LongHorizon, General) for context-aware rule application
+- **Auto-Suggest for Vague Prompts**: When EXP005/EXP006 detected in a TTY, automatically offers multi-select dialog to enhance prompts (use `--no-suggest` to disable)
+- **TUI Suggest Modal**: In interactive mode (`-i`), shows a modal dialog with checkbox selection and keyboard navigation (↑/↓/Space/Enter/Esc)
 
 ## Adding New Analysis Rules
 
