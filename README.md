@@ -173,7 +173,7 @@ Use `--no-suggest` to disable this for scripting/CI pipelines.
   Model:             us.anthropic.claude-sonnet-4-5-20250929-v1:0
 
   ──────────────────────────────────────────────────────────────────────
-  ✓  Saved to: copt-output/optimized_20251229_143052.txt
+  ✓  Saved to: copt-output/optimized_20260118_143052.txt
   ──────────────────────────────────────────────────────────────────────
 ```
 
@@ -371,15 +371,15 @@ When optimizing (not in offline mode), copt automatically saves results:
 
 ```
 copt-output/
-├── optimized_20251229_143052.txt   # Optimized prompt
-└── optimized_20251229_143052.json  # Metadata
+├── optimized_20260118_143052.txt   # Optimized prompt
+└── optimized_20260118_143052.json  # Metadata
 ```
 
 **Metadata JSON:**
 
 ```json
 {
-  "timestamp": "2025-12-29T14:30:52-08:00",
+  "timestamp": "2026-01-18T14:30:52-08:00",
   "original_tokens": 215,
   "optimized_tokens": 287,
   "rules_applied": 3,
@@ -414,7 +414,7 @@ RUST_LOG=debug cargo run -- -f test.txt --offline
 
 ## License
 
-[MIT License](LICENSE) — Copyright (c) 2025 Praveen Chamarthi
+[MIT License](LICENSE) — Copyright (c) 2026 Praveen Chamarthi
 
 ---
 
