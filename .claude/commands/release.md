@@ -15,11 +15,13 @@ You are executing the release workflow for the copt project.
 2. **Start only if not running**: `docker compose run -d --rm --name my-git-workspace git-workspace`
 
 ### Verify Git Identity
-After container is running, verify git config:
+After container is running, verify git config (must run from repo directory):
 ```bash
-docker exec my-git-workspace git-test
+docker exec -w /workspace/repos/copt my-git-workspace git-test
 ```
 Expected: username `praveenc`, email `1090396+praveenc@users.noreply.github.com`
+
+**Note**: Git user config is set per-repo, not globally. Running `git-test` from `/workspace` will show "not set".
 
 If incorrect, stop and alert user.
 
@@ -43,7 +45,7 @@ Execute these steps IN ORDER. Stop and report errors immediately.
 ### Step 0: Container Setup
 1. Check if running: `docker ps --filter name=my-git-workspace --format '{{.Names}}'`
 2. If empty, start: `docker compose run -d --rm --name my-git-workspace git-workspace`
-3. Verify git identity: `docker exec my-git-workspace git-test`
+3. Verify git identity: `docker exec -w /workspace/repos/copt my-git-workspace git-test`
 4. Confirm username is `praveenc` and email is `1090396+praveenc@users.noreply.github.com`
 5. If verification fails, STOP and alert user
 

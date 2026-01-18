@@ -15,11 +15,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. **Start only if not running**: `docker compose run -d --rm --name my-git-workspace git-workspace`
 
 ### Verify Git Identity
-Before any commit, verify git config:
+Before any commit, verify git config (must run from repo directory):
 ```bash
-docker exec my-git-workspace git-test
+docker exec -w /workspace/repos/copt my-git-workspace git-test
 ```
 Expected: username `praveenc`, email `1090396+praveenc@users.noreply.github.com`
+
+**Note**: Running from `/workspace` root will show `not set` for user.name/email since git config is set at repo level.
 
 ### Running Git Commands
 ```bash
