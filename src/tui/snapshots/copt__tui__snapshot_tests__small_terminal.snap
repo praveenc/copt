@@ -1,6 +1,5 @@
 ---
 source: src/tui/snapshot_tests.rs
-assertion_line: 130
 expression: output
 ---
 ✓ 2 issues found                                  
@@ -14,4 +13,4 @@ expression: output
                                                   
                                                   
                                                   
-↑↓:nav  Enter:expand  ?:help  q:quit
+↑↓:nav  Enter:collapse  ?:help  q:quit

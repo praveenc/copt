@@ -1,6 +1,5 @@
 ---
 source: src/tui/snapshot_tests.rs
-assertion_line: 148
 expression: output
 ---
 ⚡  CLAUDE PROMPT OPTIMIZER v0.2.1                                               
@@ -26,4 +25,4 @@ Optimize prompts for Claude 4.5
 │                                                                              │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
-↑↓:nav  Enter:expand  ?:help  q:quit
+↑↓:nav  Enter:toggle  ?:help  q:quit

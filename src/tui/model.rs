@@ -5,6 +5,7 @@
 #![allow(dead_code)]
 
 use std::collections::HashSet;
+use std::time::{Duration, Instant};
 
 use crate::analyzer::Issue;
 use crate::tui::widgets::SuggestModalState;
@@ -248,6 +249,10 @@ pub struct Model {
     pub terminal_height: u16,
     /// Suggest modal state for vague prompt improvements
     pub suggest_modal: SuggestModalState,
+    /// Temporary status message (e.g., "Copied to clipboard")
+    pub status_message: Option<String>,
+    /// When to auto-clear the status message
+    pub status_clear_at: Option<Instant>,
 }
 
 impl Model {
@@ -270,6 +275,8 @@ impl Model {
             terminal_width: 80,
             terminal_height: 24,
             suggest_modal: SuggestModalState::default(),
+            status_message: None,
+            status_clear_at: None,
         }
     }
 
@@ -322,6 +329,49 @@ impl Model {
             .iter()
             .map(|c| c.issues.len())
             .sum()
+    }
+
+    /// Set a temporary status message that auto-clears after duration
+    pub fn set_status_message(&mut self, message: impl Into<String>, duration: Duration) {
+        self.status_message = Some(message.into());
+        self.status_clear_at = Some(Instant::now() + duration);
+    }
+
+    /// Clear the status message
+    pub fn clear_status_message(&mut self) {
+        self.status_message = None;
+        self.status_clear_at = None;
+    }
+
+    /// Check if status message should be cleared (expired)
+    pub fn check_status_expiry(&mut self) -> bool {
+        if let Some(clear_at) = self.status_clear_at {
+            if Instant::now() >= clear_at {
+                self.clear_status_message();
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Check if the currently selected item in issue tree is a category header
+    pub fn is_current_selection_category(&self) -> bool {
+        self.issue_tree.is_category_at(self.issue_tree.flat_index)
+    }
+
+    /// Check if the currently selected category is expanded
+    pub fn is_current_category_expanded(&self) -> Option<bool> {
+        let mut idx = 0;
+        for cat in &self.issue_tree.categories {
+            if idx == self.issue_tree.flat_index {
+                return Some(cat.expanded);
+            }
+            idx += 1;
+            if cat.expanded {
+                idx += cat.issues.len();
+            }
+        }
+        None
     }
 }
 

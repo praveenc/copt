@@ -4,6 +4,9 @@
 
 #![allow(dead_code)]
 
+use std::time::Duration;
+
+use chrono::Local;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::model::{Model, View};
@@ -34,8 +37,8 @@ pub fn update(model: &mut Model, msg: Msg) -> bool {
             true // Always redraw on resize
         }
         Msg::Tick => {
-            // Could be used for animations
-            false
+            // Check if status message should be cleared
+            model.check_status_expiry()
         }
         Msg::Quit => {
             model.should_quit = true;
@@ -125,14 +128,8 @@ fn handle_main_keys(model: &mut Model, key: KeyEvent) -> bool {
         }
 
         // Actions (only when results available)
-        KeyCode::Char('c') if model.has_results() => {
-            // Copy to clipboard - handled separately
-            handle_copy(model)
-        }
-        KeyCode::Char('s') if model.has_results() => {
-            // Save - handled separately
-            handle_save(model)
-        }
+        KeyCode::Char('c') if model.has_results() => handle_copy(model),
+        KeyCode::Char('s') if model.has_results() => handle_save(model),
         KeyCode::Char('r') if model.has_results() => {
             // Re-run - would need async handling
             false
@@ -197,21 +194,53 @@ fn handle_help_keys(model: &mut Model, key: KeyEvent) -> bool {
 }
 
 /// Handle copy to clipboard action
-fn handle_copy(model: &Model) -> bool {
+fn handle_copy(model: &mut Model) -> bool {
     if let Some(ref optimized) = model.optimized_prompt {
-        // Use cli-clipboard or similar crate
-        // For now, we'll just indicate the action was attempted
-        if let Err(_e) = copy_to_clipboard(optimized) {
-            // Could set an error state here
+        match copy_to_clipboard(optimized) {
+            Ok(()) => {
+                model.set_status_message("✓ Copied to clipboard", Duration::from_secs(3));
+            }
+            Err(e) => {
+                model.set_status_message(format!("✗ Copy failed: {}", e), Duration::from_secs(5));
+            }
         }
+        return true; // Trigger redraw to show feedback
     }
-    false // No visual change needed
+    false
 }
 
 /// Handle save action
-fn handle_save(_model: &Model) -> bool {
-    // Save is handled by the existing auto-save logic in main.rs
-    // This is a placeholder for explicit save action
+fn handle_save(model: &mut Model) -> bool {
+    if let Some(ref optimized) = model.optimized_prompt {
+        // Generate output path
+        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+        let filename = format!("optimized_{}.txt", timestamp);
+        let output_dir = std::path::PathBuf::from("copt-output");
+        let output_path = output_dir.join(&filename);
+
+        // Create output directory if needed
+        if let Err(e) = std::fs::create_dir_all(&output_dir) {
+            model.set_status_message(
+                format!("✗ Failed to create directory: {}", e),
+                Duration::from_secs(5),
+            );
+            return true;
+        }
+
+        // Write the optimized prompt
+        match std::fs::write(&output_path, optimized) {
+            Ok(()) => {
+                model.set_status_message(
+                    format!("✓ Saved to {}", output_path.display()),
+                    Duration::from_secs(5),
+                );
+            }
+            Err(e) => {
+                model.set_status_message(format!("✗ Save failed: {}", e), Duration::from_secs(5));
+            }
+        }
+        return true; // Trigger redraw to show feedback
+    }
     false
 }
 

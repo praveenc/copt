@@ -1,6 +1,5 @@
 ---
 source: src/tui/snapshot_tests.rs
-assertion_line: 139
 expression: output
 ---
 ⚡  CLAUDE PROMPT OPTIMIZER v0.2.1 [OFFLINE MODE]                                
@@ -26,4 +25,4 @@ Static analysis only (no LLM calls)
 │                                                                              │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
-↑↓:nav  Enter:expand  ?:help  q:quit
+↑↓:nav  Enter:collapse  ?:help  q:quit

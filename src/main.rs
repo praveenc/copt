@@ -280,16 +280,59 @@ async fn get_input_prompt(cli: &Cli) -> Result<String> {
 
 /// Editor-based multi-line input mode
 async fn editor_input() -> Result<String> {
-    use dialoguer::Editor;
-
     println!("\n📝 Opening editor for multi-line input...\n");
 
-    let prompt = Editor::new()
-        .edit("# Enter your prompt below (save and close to continue)\n\n")?
-        .unwrap_or_default();
+    // Create a temporary file with initial content
+    let temp_dir = std::env::temp_dir();
+    let temp_path = temp_dir.join(format!("copt_prompt_{}.txt", std::process::id()));
 
-    // Remove the comment line if present
-    let prompt = prompt
+    let initial_content = "# Enter your prompt below (save and close to continue)\n\n";
+    std::fs::write(&temp_path, initial_content)
+        .with_context(|| format!("Failed to create temp file: {}", temp_path.display()))?;
+
+    // Get the editor from environment or use sensible defaults
+    let editor = std::env::var("EDITOR")
+        .or_else(|_| std::env::var("VISUAL"))
+        .unwrap_or_else(|_| {
+            // Try to find a common editor
+            if cfg!(target_os = "macos") {
+                "nano".to_string()
+            } else if cfg!(target_os = "windows") {
+                "notepad".to_string()
+            } else {
+                "vi".to_string()
+            }
+        });
+
+    // Clone path for the blocking task
+    let temp_path_clone = temp_path.clone();
+    let editor_clone = editor.clone();
+
+    // Use spawn_blocking to properly wait for the editor process
+    let status = tokio::task::spawn_blocking(move || {
+        std::process::Command::new(&editor_clone)
+            .arg(&temp_path_clone)
+            .status()
+    })
+    .await
+    .context("Failed to spawn editor task")?
+    .with_context(|| format!("Failed to execute editor: {}", editor))?;
+
+    if !status.success() {
+        // Clean up temp file
+        let _ = std::fs::remove_file(&temp_path);
+        anyhow::bail!("Editor exited with non-zero status: {:?}", status.code());
+    }
+
+    // Read the edited content
+    let content = std::fs::read_to_string(&temp_path)
+        .with_context(|| format!("Failed to read temp file: {}", temp_path.display()))?;
+
+    // Clean up temp file
+    let _ = std::fs::remove_file(&temp_path);
+
+    // Remove comment lines and trim
+    let prompt = content
         .lines()
         .filter(|line| !line.starts_with('#'))
         .collect::<Vec<_>>()
