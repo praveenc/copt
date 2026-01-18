@@ -5,6 +5,7 @@
 #![allow(dead_code)]
 
 pub mod config;
+pub mod suggest;
 
 /// Default model to use for optimization (Bedrock inference profile ID)
 pub const DEFAULT_MODEL: &str = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";

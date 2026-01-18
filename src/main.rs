@@ -106,6 +106,10 @@ struct Cli {
     #[arg(long, value_delimiter = ',', value_name = "CAT")]
     check: Option<Vec<String>>,
 
+    /// Interactively suggest improvements for vague prompts
+    #[arg(long)]
+    suggest: bool,
+
     /// Launch full-screen interactive TUI mode
     #[arg(short, long)]
     interactive: bool,
@@ -342,6 +346,31 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
         m.set_issues(&issues);
     }
 
+    // Interactive suggestions for vague prompts (EXP005/EXP006)
+    let prompt = if cli.suggest && cli::suggest::should_suggest(&issues) {
+        // Render header/analysis first so user sees context
+        if let Some(ref mut m) = model {
+            m.phase = AppPhase::AnalysisDone;
+            tui::linear::render(m)?;
+        }
+
+        // Run interactive suggestion flow
+        match cli::suggest::run_interactive_suggestions(prompt, &issues) {
+            Ok(Some(enhanced)) => {
+                println!();
+                enhanced
+            }
+            Ok(None) => prompt.to_string(),
+            Err(e) => {
+                eprintln!("  {} Suggestion prompt failed: {}", "⚠".yellow(), e);
+                prompt.to_string()
+            }
+        }
+    } else {
+        prompt.to_string()
+    };
+    let prompt = prompt.as_str();
+
     // If analyze-only or no issues, return early
     if cli.analyze || (issues.is_empty() && !cli.offline) {
         let stats = OptimizationStats {
@@ -380,6 +409,11 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
         m.phase = AppPhase::Optimizing;
         // Render header, input info, and analysis
         tui::linear::render(m)?;
+    }
+
+    // Show suggestion hint in offline mode if vague prompt detected (and not using --suggest)
+    if cli.offline && !cli.suggest && cli::suggest::should_suggest(&issues) && !cli.quiet {
+        cli::suggest::print_suggestions(&issues);
     }
 
     // Perform optimization
