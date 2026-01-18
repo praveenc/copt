@@ -522,7 +522,7 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
         None
     };
 
-    // Save the optimized prompt
+    // Save the optimized prompt and original prompt for comparison
     if let Some(ref path) = output_path {
         // Create output directory if it doesn't exist
         if let Some(parent) = path.parent() {
@@ -531,15 +531,31 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
             })?;
         }
 
+        // Derive original prompt path from optimized path
+        let original_path = {
+            let filename = path.file_name().unwrap().to_string_lossy();
+            let original_filename = filename.replace("optimized_", "original_");
+            path.with_file_name(original_filename)
+        };
+
         // Write the optimized prompt
         tokio::fs::write(path, &result.optimized)
             .await
             .with_context(|| format!("Failed to write to: {}", path.display()))?;
 
+        // Write the original prompt for comparison
+        tokio::fs::write(&original_path, &result.original)
+            .await
+            .with_context(|| format!("Failed to write original: {}", original_path.display()))?;
+
         // Also write metadata JSON alongside
         let metadata_path = path.with_extension("json");
         let metadata = serde_json::json!({
             "timestamp": Local::now().to_rfc3339(),
+            "files": {
+                "original": original_path.file_name().unwrap().to_string_lossy(),
+                "optimized": path.file_name().unwrap().to_string_lossy(),
+            },
             "original_length": result.stats.original_chars,
             "optimized_length": result.stats.optimized_chars,
             "original_tokens": result.stats.original_tokens,
