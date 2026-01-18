@@ -6,7 +6,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `copt` is a Rust CLI tool that optimizes prompts for Claude 4.5 models. It analyzes prompts for anti-patterns based on Anthropic's best practices and rewrites them using either static rules or LLM-powered optimization.
 
+## Container Requirement
+
+**All git operations (commit, push, tag) must run inside the git-workspace container.**
+
+### Setup
+1. **Check if running**: `docker ps --filter name=my-git-workspace --format '{{.Names}}'`
+2. **Start only if not running**: `docker compose run -d --rm --name my-git-workspace git-workspace`
+
+### Verify Git Identity
+Before any commit, verify git config:
+```bash
+docker exec my-git-workspace git-test
+```
+Expected: username `praveenc`, email `1090396+praveenc@users.noreply.github.com`
+
+### Running Git Commands
+```bash
+docker exec my-git-workspace git -C /workspace/repos/copt <command>
+docker exec my-git-workspace gh <command>
+```
+
+Repo path inside container: `/workspace/repos/copt`
+
 ## Build and Development Commands
+
+### Makefile (Preferred)
+
+```bash
+make ci       # CI pipeline: fmt-check → lint → build → test (strict, no auto-fix)
+make check    # Local dev: fmt → lint → test (auto-fixes formatting)
+make build    # Debug build
+make release  # Release build (optimized)
+make test     # Run all tests
+make lint     # Clippy with warnings as errors
+make fmt      # Auto-fix formatting
+make clean    # Clean build artifacts
+```
+
+### Direct Cargo Commands
 
 ```bash
 # Build
