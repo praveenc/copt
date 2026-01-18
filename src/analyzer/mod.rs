@@ -6,6 +6,141 @@
 use anyhow::Result;
 use regex::Regex;
 
+/// Prompt type for context-aware rule application
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PromptType {
+    Coding,
+    QaAssistant,
+    Research,
+    Creative,
+    LongHorizon,
+    General,
+}
+
+/// Classify prompt type for context-aware analysis
+pub fn classify_prompt(prompt: &str) -> PromptType {
+    let lower = prompt.to_lowercase();
+
+    // Check for long-horizon indicators first (most specific)
+    if lower.contains("multi-step")
+        || lower.contains("over multiple")
+        || lower.contains("long-running")
+        || lower.contains("complex project")
+        || (lower.contains("implement") && lower.contains("full"))
+    {
+        return PromptType::LongHorizon;
+    }
+
+    // Coding task indicators
+    if lower.contains("code")
+        || lower.contains("function")
+        || lower.contains("refactor")
+        || lower.contains("debug")
+        || lower.contains("implement")
+        || lower.contains("fix the bug")
+        || lower.contains("write a program")
+    {
+        return PromptType::Coding;
+    }
+
+    // Q&A Assistant indicators
+    if lower.contains("answer question")
+        || lower.contains("answer any")
+        || lower.contains("assist with")
+        || lower.contains("help with")
+        || lower.contains("you are a") && (lower.contains("assistant") || lower.contains("agent"))
+    {
+        return PromptType::QaAssistant;
+    }
+
+    // Research indicators
+    if lower.contains("research")
+        || lower.contains("investigate")
+        || lower.contains("analyze")
+        || lower.contains("find information")
+    {
+        return PromptType::Research;
+    }
+
+    // Creative indicators
+    if lower.contains("write a story")
+        || lower.contains("create content")
+        || lower.contains("generate")
+        || lower.contains("creative")
+    {
+        return PromptType::Creative;
+    }
+
+    PromptType::General
+}
+
+/// Get applicable rule categories for a prompt type
+pub fn get_applicable_categories(prompt_type: PromptType) -> Vec<&'static str> {
+    match prompt_type {
+        PromptType::Coding => vec!["explicitness", "style", "tools", "formatting", "agentic"],
+        PromptType::QaAssistant => vec!["explicitness", "style", "formatting"],
+        PromptType::Research => vec!["explicitness", "style", "agentic", "verbosity"],
+        PromptType::Creative => vec!["explicitness", "style", "formatting", "frontend"],
+        PromptType::LongHorizon => vec![
+            "explicitness",
+            "style",
+            "tools",
+            "formatting",
+            "verbosity",
+            "agentic",
+            "long_horizon",
+            "frontend",
+        ],
+        PromptType::General => vec!["explicitness", "style", "formatting"],
+    }
+}
+
+/// XML block preserved during analysis (fields used for future reconstruction)
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct XmlBlock {
+    pub tag: String,
+    pub content: String,
+    pub start: usize,
+    pub end: usize,
+}
+
+/// Extract XML blocks (examples, instructions, etc.) to prevent false positives
+pub fn extract_xml_blocks(prompt: &str) -> (String, Vec<XmlBlock>) {
+    let mut blocks = Vec::new();
+    let mut cleaned = prompt.to_string();
+
+    // Tags to extract and preserve (not analyze)
+    let preserve_tags = [
+        "examples",
+        "example",
+        "input",
+        "output",
+        "context",
+        "background",
+    ];
+
+    for tag in preserve_tags {
+        let pattern = format!(r"(?s)<{}>(.*?)</{}>", tag, tag);
+        if let Ok(re) = Regex::new(&pattern) {
+            for cap in re.captures_iter(prompt) {
+                if let (Some(full_match), Some(content)) = (cap.get(0), cap.get(1)) {
+                    blocks.push(XmlBlock {
+                        tag: tag.to_string(),
+                        content: content.as_str().to_string(),
+                        start: full_match.start(),
+                        end: full_match.end(),
+                    });
+                }
+            }
+            // Remove the matched blocks from cleaned text for analysis
+            cleaned = re.replace_all(&cleaned, "").to_string();
+        }
+    }
+
+    (cleaned, blocks)
+}
+
 /// Issue severity level
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
@@ -25,7 +160,8 @@ pub struct Issue {
     pub suggestion: Option<String>,
 }
 
-/// All available rule categories
+/// All available rule categories (used when explicit category check is requested)
+#[allow(dead_code)]
 pub const CATEGORIES: &[&str] = &[
     "explicitness",
     "style",
@@ -41,23 +177,32 @@ pub const CATEGORIES: &[&str] = &[
 pub fn analyze(prompt: &str, check_categories: Option<&[String]>) -> Result<Vec<Issue>> {
     let mut issues = Vec::new();
 
+    // Extract XML blocks to prevent false positives from examples
+    let (cleaned_prompt, _xml_blocks) = extract_xml_blocks(prompt);
+
+    // Classify prompt type for context-aware analysis
+    let prompt_type = classify_prompt(prompt);
+
     // Determine which categories to check
     let categories_to_check: Vec<&str> = match check_categories {
         Some(cats) => cats.iter().map(|s| s.as_str()).collect(),
-        None => CATEGORIES.to_vec(),
+        None => {
+            // Use context-aware categories based on prompt type
+            get_applicable_categories(prompt_type)
+        }
     };
 
-    // Run all applicable analyzers
+    // Run all applicable analyzers on cleaned prompt (without XML blocks)
     for category in categories_to_check {
         match category {
-            "explicitness" => issues.extend(analyze_explicitness(prompt)),
-            "style" => issues.extend(analyze_style(prompt)),
-            "tools" => issues.extend(analyze_tools(prompt)),
-            "formatting" => issues.extend(analyze_formatting(prompt)),
-            "verbosity" => issues.extend(analyze_verbosity(prompt)),
-            "agentic" => issues.extend(analyze_agentic(prompt)),
-            "long_horizon" => issues.extend(analyze_long_horizon(prompt)),
-            "frontend" => issues.extend(analyze_frontend(prompt)),
+            "explicitness" => issues.extend(analyze_explicitness(&cleaned_prompt, prompt_type)),
+            "style" => issues.extend(analyze_style(&cleaned_prompt)),
+            "tools" => issues.extend(analyze_tools(&cleaned_prompt)),
+            "formatting" => issues.extend(analyze_formatting(&cleaned_prompt)),
+            "verbosity" => issues.extend(analyze_verbosity(&cleaned_prompt)),
+            "agentic" => issues.extend(analyze_agentic(&cleaned_prompt)),
+            "long_horizon" => issues.extend(analyze_long_horizon(&cleaned_prompt)),
+            "frontend" => issues.extend(analyze_frontend(&cleaned_prompt)),
             _ => {} // Unknown category, skip
         }
     }
@@ -65,8 +210,8 @@ pub fn analyze(prompt: &str, check_categories: Option<&[String]>) -> Result<Vec<
     Ok(issues)
 }
 
-/// Analyze for explicitness issues (EXP001-004)
-fn analyze_explicitness(prompt: &str) -> Vec<Issue> {
+/// Analyze for explicitness issues (EXP001-006)
+fn analyze_explicitness(prompt: &str, prompt_type: PromptType) -> Vec<Issue> {
     let mut issues = Vec::new();
     let lines: Vec<&str> = prompt.lines().collect();
 
@@ -165,6 +310,69 @@ fn analyze_explicitness(prompt: &str) -> Vec<Issue> {
                 line: None,
                 suggestion: Some(
                     "Define what constitutes successful completion of this task.".to_string(),
+                ),
+            });
+        }
+    }
+
+    // EXP005: Role-only prompt without specific actions
+    let role_pattern = Regex::new(r"(?i)^you are\s+(a|an)\s+").unwrap();
+    let task_pattern = Regex::new(r"(?i)your task is to\s+").unwrap();
+
+    if role_pattern.is_match(prompt) {
+        // Check if there are specific action directives
+        let has_specific_actions = prompt.contains("When the user")
+            || prompt.contains("If the user")
+            || prompt.contains("For each")
+            || prompt.contains("Always respond with")
+            || prompt.contains("Format your response")
+            || Regex::new(r"(?i)\b(first|then|finally|step \d)\b")
+                .unwrap()
+                .is_match(prompt);
+
+        let has_passive_task = task_pattern.is_match(prompt);
+
+        if !has_specific_actions && (has_passive_task || prompt_type == PromptType::QaAssistant) {
+            issues.push(Issue {
+                id: "EXP005".to_string(),
+                category: "explicitness".to_string(),
+                severity: Severity::Warning,
+                message: "Role-only prompt without specific action directives".to_string(),
+                line: Some(1),
+                suggestion: Some(
+                    "Add explicit actions: 'When the user asks about X, respond with Y format.' \
+                    Claude 4.5 follows instructions precisely - be specific about what you want."
+                        .to_string(),
+                ),
+            });
+        }
+    }
+
+    // EXP006: Open-ended instructions
+    let open_ended_pattern = Regex::new(
+        r"(?i)\b(answer any|respond to any|help with any|handle any|assist with any)\s+\w+",
+    )
+    .unwrap();
+
+    if open_ended_pattern.is_match(prompt) {
+        let has_boundaries = prompt.contains("format")
+            || prompt.contains("limit")
+            || prompt.contains("only")
+            || prompt.contains("scope")
+            || prompt.contains("boundaries");
+
+        if !has_boundaries {
+            issues.push(Issue {
+                id: "EXP006".to_string(),
+                category: "explicitness".to_string(),
+                severity: Severity::Warning,
+                message: "Open-ended instruction without boundaries or format specification"
+                    .to_string(),
+                line: None,
+                suggestion: Some(
+                    "Specify: What format should responses use? What topics are in scope? \
+                    How detailed should answers be? How to handle unknown information?"
+                        .to_string(),
                 ),
             });
         }
@@ -382,8 +590,10 @@ fn analyze_formatting(prompt: &str) -> Vec<Issue> {
     let lines: Vec<&str> = prompt.lines().collect();
 
     // FMT001: Missing format specification for complex outputs
-    let complex_output_indicators =
-        Regex::new(r"(?i)\b(explain|describe|analyze|write|create|generate|produce)\b").unwrap();
+    let complex_output_indicators = Regex::new(
+        r"(?i)\b(explain|describe|analyze|write|create|generate|produce|answer|respond|reply)\b",
+    )
+    .unwrap();
 
     if complex_output_indicators.is_match(prompt) && prompt.len() > 50 {
         let has_format_spec = prompt.contains("format")
@@ -805,8 +1015,47 @@ mod tests {
 
     #[test]
     fn test_detect_suggestion_language() {
-        let issues = analyze("Can you suggest some changes to improve this?", None).unwrap();
+        let issues = analyze_tools("Please suggest some changes to improve the code");
         assert!(issues.iter().any(|i| i.id == "TUL001"));
+    }
+
+    #[test]
+    fn test_detect_role_only_prompt() {
+        let prompt = "You are an experienced travel assistant. Your task is to answer questions about flights.";
+        let issues = analyze_explicitness(prompt, PromptType::QaAssistant);
+        assert!(issues.iter().any(|i| i.id == "EXP005"));
+    }
+
+    #[test]
+    fn test_detect_open_ended_instructions() {
+        let prompt = "Answer any questions the user might have about the product.";
+        let issues = analyze_explicitness(prompt, PromptType::QaAssistant);
+        assert!(issues.iter().any(|i| i.id == "EXP006"));
+    }
+
+    #[test]
+    fn test_xml_extraction() {
+        let prompt = "Do this task.\n<examples>\n<example>Example 1</example>\n</examples>";
+        let (cleaned, blocks) = extract_xml_blocks(prompt);
+        assert!(cleaned.contains("Do this task"));
+        assert!(!cleaned.contains("<examples>"));
+        assert!(!blocks.is_empty());
+    }
+
+    #[test]
+    fn test_prompt_classifier() {
+        assert_eq!(
+            classify_prompt("You are an assistant. Answer any questions."),
+            PromptType::QaAssistant
+        );
+        assert_eq!(
+            classify_prompt("Fix the bug in this function"),
+            PromptType::Coding
+        );
+        assert_eq!(
+            classify_prompt("Research the history of AI"),
+            PromptType::Research
+        );
     }
 
     #[test]
