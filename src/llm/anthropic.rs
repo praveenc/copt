@@ -46,7 +46,6 @@ impl LlmClient for AnthropicClient {
             model: model.to_string(),
             max_tokens,
             temperature: Some(0.3),
-            top_p: Some(0.95),
             system: Some(system.to_string()),
             messages: vec![AnthropicMessage {
                 role: "user".to_string(),
@@ -118,8 +117,6 @@ struct AnthropicRequest {
     max_tokens: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    top_p: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     system: Option<String>,
     messages: Vec<AnthropicMessage>,

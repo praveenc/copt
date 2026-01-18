@@ -94,8 +94,9 @@ The LLM clients use these inference parameters for prompt optimization:
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
 | `temperature` | 0.3 | Low for consistent, deterministic rewrites |
-| `top_p` | 0.95 | Slight constraint on sampling for focused output |
 | `max_tokens` | 4096 | Sufficient for most prompt optimizations |
+
+**Note**: Claude 4.5 models do not allow `temperature` and `top_p` to be specified together. We use `temperature` only.
 
 These settings prioritize **reproducibility** over creativity — prompt optimization is a precision task where users expect similar inputs to produce similar outputs.
 

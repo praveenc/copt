@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `optimize_with_llm()` now accepts `PromptType` parameter for context-aware optimization
 - `build_optimization_message()` includes `<prompt_type>` tag for LLM context
 - TTY detection for smart auto-suggest behavior (`std::io::IsTerminal`)
-- LLM inference config: `temperature: 0.3`, `top_p: 0.95` for consistent, deterministic prompt rewrites
+- LLM inference config: `temperature: 0.3` for consistent, deterministic prompt rewrites (Claude 4.5 doesn't allow both `temperature` and `top_p`)
 
 ## [0.2.0] - 2025-01-10
 
