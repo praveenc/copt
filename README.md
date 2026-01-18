@@ -36,14 +36,30 @@ Download the latest release for your platform:
 | Linux (x64)           | [copt-linux-x64](https://github.com/praveenc/copt/releases/latest)       |
 | Windows (x64)         | [copt-windows-x64.exe](https://github.com/praveenc/copt/releases/latest) |
 
+**Quick Install (macOS Apple Silicon):**
+
 ```bash
-# macOS/Linux: Make executable and move to PATH
-chmod +x copt-*
-sudo mv copt-* /usr/local/bin/copt
+# Download latest release
+curl -L https://github.com/praveenc/copt/releases/download/v0.2.1/copt-macos-arm64 -o copt
+
+# Make executable and move to PATH
+chmod +x copt
+sudo mv copt /usr/local/bin/copt
 
 # Verify installation
 copt --version
 ```
+
+> **⚠️ macOS Security Note:** When running a binary downloaded from the internet, macOS Gatekeeper may block it with a message like _"copt can't be opened because it is from an unidentified developer"_. To allow it:
+> 1. Go to **System Settings → Privacy & Security**
+> 2. Scroll down to find the blocked app message
+> 3. Click **"Allow Anyway"**
+> 4. Run `copt --version` again and click **"Open"** in the dialog
+>
+> Alternatively, you can remove the quarantine attribute:
+> ```bash
+> xattr -d com.apple.quarantine /usr/local/bin/copt
+> ```
 
 ### From Source
 
