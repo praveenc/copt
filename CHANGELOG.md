@@ -5,17 +5,37 @@ All notable changes to `copt` (Claude Prompt Optimizer) will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.2] - 2026-01-18
 
 ### Added
 
+- **New `e` shortcut in interactive mode**: Open optimized prompt in default editor
+  - Uses `$EDITOR` or `$VISUAL` environment variable
+  - Falls back to `nano` (macOS), `notepad` (Windows), `vi` (Linux)
+  - Status bar and help screen updated with new shortcut
+- **Makefile targets for debug/release CI**:
+  - `make ci-debug` — Debug build for development/testing (default)
+  - `make ci-release` — Release build for releases
+  - `make ci` now aliases to `ci-debug`
+
 ### Changed
+
+- **Interactive mode (`-i`) default view**: Now shows Diff view when optimization completes (instead of Main view) for better UX — users see changes immediately
+- **LLM optimization behavior**: Now proceeds with LLM optimization even when no static rules triggered — LLM can enhance prompts beyond what static rules detect
+- **Editor mode (`-e`)**: Simplified wait flag handling to only verified editors (VSCode, Zed)
 
 ### Fixed
 
+- **TUI status bar**: Now shows dynamic "expand/collapse" label based on whether the currently selected category is expanded or collapsed (was static "expand")
+- **TUI copy/save feedback**: `c` (copy) and `s` (save) shortcuts now show status messages ("✓ Copied to clipboard", "✓ Saved to copt-output/...") that auto-clear after a few seconds
+- **Editor mode (`-e`)**: Fixed to properly wait for editor to close before processing prompt
+  - Uses `spawn_blocking` for proper async handling
+  - Adds `--wait` flag for GUI editors (VSCode, Zed)
+- **Suggest modal clipping**: Fixed modal sizing to use 80% width/height (was using pixel values incorrectly), preventing content from being clipped in diff view
+
 ---
 
-## [0.2.1] - 2025-01-18
+## [0.2.1] - 2026-01-18
 
 ### Added
 
@@ -55,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TTY detection for smart auto-suggest behavior (`std::io::IsTerminal`)
 - LLM inference config: `temperature: 0.3` for consistent, deterministic prompt rewrites (Claude 4.5 doesn't allow both `temperature` and `top_p`)
 
-## [0.2.0] - 2025-01-10
+## [0.2.0] - 2026-01-10
 
 ### Added
 
@@ -213,7 +233,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/praveenc/copt/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/praveenc/copt/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/praveenc/copt/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/praveenc/copt/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/praveenc/copt/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/praveenc/copt/compare/v0.1.0...v0.1.1

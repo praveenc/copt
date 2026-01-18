@@ -1,9 +1,8 @@
 ---
 source: src/tui/snapshot_tests.rs
-assertion_line: 107
 expression: output
 ---
-⚡  CLAUDE PROMPT OPTIMIZER v0.2.1                                               
+⚡  CLAUDE PROMPT OPTIMIZER v0.2.2                                               
 Optimize prompts for Claude 4.5                                                 
 📥  Input: test_prompt.txt (53 chars, 12 tokens)                                 
 ────────────────────────────────────────────────────────────────────────────────
@@ -26,4 +25,4 @@ Optimize prompts for Claude 4.5
 │PROVIDER                                                                      │
 │Service:          Bedrock                                                     │
 └──────────────────────────────────────────────────────────────────────────────┘
-↑↓:nav  Enter:expand  d:diff  c:copy  s:save  ?:help  q:quit
+↑↓:nav  Enter:collapse  d:diff  c:copy  s:save  e:edit  ?:help  q:quit

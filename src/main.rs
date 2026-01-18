@@ -280,16 +280,63 @@ async fn get_input_prompt(cli: &Cli) -> Result<String> {
 
 /// Editor-based multi-line input mode
 async fn editor_input() -> Result<String> {
-    use dialoguer::Editor;
-
     println!("\n📝 Opening editor for multi-line input...\n");
 
-    let prompt = Editor::new()
-        .edit("# Enter your prompt below (save and close to continue)\n\n")?
-        .unwrap_or_default();
+    // Create a temporary file with initial content
+    let temp_dir = std::env::temp_dir();
+    let temp_path = temp_dir.join(format!("copt_prompt_{}.txt", std::process::id()));
 
-    // Remove the comment line if present
-    let prompt = prompt
+    let initial_content = "# Enter your prompt below (save and close to continue)\n\n";
+    std::fs::write(&temp_path, initial_content)
+        .with_context(|| format!("Failed to create temp file: {}", temp_path.display()))?;
+
+    // Get the editor from environment or use sensible defaults
+    let editor = std::env::var("EDITOR")
+        .or_else(|_| std::env::var("VISUAL"))
+        .unwrap_or_else(|_| {
+            // Try to find a common editor
+            if cfg!(target_os = "macos") {
+                "nano".to_string()
+            } else if cfg!(target_os = "windows") {
+                "notepad".to_string()
+            } else {
+                "vi".to_string()
+            }
+        });
+
+    // Build editor command with appropriate wait flags for GUI editors
+    // GUI editors fork and return immediately unless told to wait
+    let (editor_cmd, editor_args) = build_editor_command(&editor, &temp_path);
+
+    // Clone for the blocking task
+    let editor_cmd_clone = editor_cmd.clone();
+    let editor_args_clone = editor_args.clone();
+
+    // Use spawn_blocking to properly wait for the editor process
+    let status = tokio::task::spawn_blocking(move || {
+        std::process::Command::new(&editor_cmd_clone)
+            .args(&editor_args_clone)
+            .status()
+    })
+    .await
+    .context("Failed to spawn editor task")?
+    .with_context(|| format!("Failed to execute editor: {}", editor_cmd))?;
+
+    if !status.success() {
+        // Clean up temp file
+        let _ = std::fs::remove_file(&temp_path);
+        anyhow::bail!("Editor exited with non-zero status: {:?}", status.code());
+    }
+
+    // Read the edited content
+    let content = std::fs::read_to_string(&temp_path)
+        .with_context(|| format!("Failed to read temp file: {}", temp_path.display()))?;
+
+    // Clean up temp file
+    let _ = std::fs::remove_file(&temp_path);
+
+    // Remove comment lines and trim
+    let prompt = content
         .lines()
         .filter(|line| !line.starts_with('#'))
         .collect::<Vec<_>>()
@@ -298,6 +345,38 @@ async fn editor_input() -> Result<String> {
         .to_string();
 
     Ok(prompt)
+}
+
+/// Build editor command with appropriate wait flags for GUI editors
+///
+/// GUI editors fork and return immediately unless given a --wait flag.
+/// We only add flags for editors we've verified support them.
+fn build_editor_command(editor: &str, file_path: &std::path::Path) -> (String, Vec<String>) {
+    let editor_lower = editor.to_lowercase();
+    let file_arg = file_path.to_string_lossy().to_string();
+
+    // Extract just the binary name for matching (handle full paths)
+    let editor_name = std::path::Path::new(editor)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(editor)
+        .to_lowercase();
+
+    // VSCode: `code --wait` (verified)
+    if editor_name.contains("code") || editor_lower.contains("visual studio code") {
+        return (editor.to_string(), vec!["--wait".to_string(), file_arg]);
+    }
+
+    // Zed: `zed --wait` or `/path/to/Zed.app/.../cli --wait` (verified)
+    if editor_name == "cli" && editor_lower.contains("zed") {
+        return (editor.to_string(), vec!["--wait".to_string(), file_arg]);
+    }
+    if editor_name.contains("zed") {
+        return (editor.to_string(), vec!["--wait".to_string(), file_arg]);
+    }
+
+    // Default: terminal editors (vim, nano, emacs, etc.) block by default
+    (editor.to_string(), vec![file_arg])
 }
 
 /// Main optimization result structure
@@ -383,8 +462,10 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
     };
     let prompt = prompt.as_str();
 
-    // If analyze-only or no issues, return early
-    if cli.analyze || (issues.is_empty() && !cli.offline) {
+    // If analyze-only mode, return early without optimization
+    // In LLM mode, we still optimize even if no static rules triggered
+    // (the LLM can enhance prompts beyond what static rules detect)
+    if cli.analyze {
         let stats = OptimizationStats {
             original_chars: prompt.len(),
             optimized_chars: prompt.len(),
@@ -400,12 +481,6 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
         if let Some(ref mut m) = model {
             m.phase = AppPhase::AnalysisDone;
             tui::linear::render(m)?;
-            if issues.is_empty() {
-                println!(
-                    "\n{} Your prompt looks great! No optimization needed.\n",
-                    "✓".green().bold()
-                );
-            }
         }
 
         return Ok(OptimizationResult {
@@ -650,8 +725,9 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
     let issues = analyzer::analyze(prompt, cli.check.as_deref())?;
     model.set_issues(&issues);
 
-    // If not offline and has issues, optimize with LLM
-    if !cli.offline && !cli.analyze && !issues.is_empty() {
+    // If not offline, optimize with LLM (even if no static rules triggered,
+    // the LLM can enhance prompts beyond what static rules detect)
+    if !cli.offline && !cli.analyze {
         model.phase = AppPhase::Optimizing;
 
         // Run LLM optimization
@@ -698,24 +774,9 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
                 model.set_error(ErrorState::new(format!("Optimization failed: {}", e)));
             }
         }
-    } else if cli.offline || cli.analyze {
+    } else {
         // In offline/analyze mode, just show analysis results
         model.phase = AppPhase::AnalysisDone;
-    } else {
-        // No issues found
-        model.phase = AppPhase::Done;
-        let stats = OptimizationStats {
-            original_chars: prompt.len(),
-            optimized_chars: prompt.len(),
-            original_tokens: utils::count_tokens(prompt),
-            optimized_tokens: utils::count_tokens(prompt),
-            processing_time_ms: start_time.elapsed().as_millis() as u64,
-            provider: format!("{:?}", cli.provider).to_lowercase(),
-            model: cli.model.clone(),
-            ..Default::default()
-        };
-        model.optimized_prompt = Some(prompt.to_string());
-        model.stats = Some(stats);
     }
 
     // Run the interactive TUI

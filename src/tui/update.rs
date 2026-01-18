@@ -4,7 +4,11 @@
 
 #![allow(dead_code)]
 
+use std::time::Duration;
+
+use chrono::Local;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use std::io::Write;
 
 use super::model::{Model, View};
 use super::widgets::handle_suggest_modal_key;
@@ -34,8 +38,8 @@ pub fn update(model: &mut Model, msg: Msg) -> bool {
             true // Always redraw on resize
         }
         Msg::Tick => {
-            // Could be used for animations
-            false
+            // Check if status message should be cleared
+            model.check_status_expiry()
         }
         Msg::Quit => {
             model.should_quit = true;
@@ -125,14 +129,9 @@ fn handle_main_keys(model: &mut Model, key: KeyEvent) -> bool {
         }
 
         // Actions (only when results available)
-        KeyCode::Char('c') if model.has_results() => {
-            // Copy to clipboard - handled separately
-            handle_copy(model)
-        }
-        KeyCode::Char('s') if model.has_results() => {
-            // Save - handled separately
-            handle_save(model)
-        }
+        KeyCode::Char('c') if model.has_results() => handle_copy(model),
+        KeyCode::Char('s') if model.has_results() => handle_save(model),
+        KeyCode::Char('e') if model.has_results() => handle_open_in_editor(model),
         KeyCode::Char('r') if model.has_results() => {
             // Re-run - would need async handling
             false
@@ -165,6 +164,7 @@ fn handle_diff_keys(model: &mut Model, key: KeyEvent) -> bool {
         }
         KeyCode::Char('c') => handle_copy(model),
         KeyCode::Char('s') => handle_save(model),
+        KeyCode::Char('e') => handle_open_in_editor(model),
         KeyCode::Up => {
             model.scroll_offset = model.scroll_offset.saturating_sub(1);
             true
@@ -197,22 +197,149 @@ fn handle_help_keys(model: &mut Model, key: KeyEvent) -> bool {
 }
 
 /// Handle copy to clipboard action
-fn handle_copy(model: &Model) -> bool {
+fn handle_copy(model: &mut Model) -> bool {
     if let Some(ref optimized) = model.optimized_prompt {
-        // Use cli-clipboard or similar crate
-        // For now, we'll just indicate the action was attempted
-        if let Err(_e) = copy_to_clipboard(optimized) {
-            // Could set an error state here
+        match copy_to_clipboard(optimized) {
+            Ok(()) => {
+                model.set_status_message("✓ Copied to clipboard", Duration::from_secs(3));
+            }
+            Err(e) => {
+                model.set_status_message(format!("✗ Copy failed: {}", e), Duration::from_secs(5));
+            }
         }
+        return true; // Trigger redraw to show feedback
     }
-    false // No visual change needed
+    false
 }
 
 /// Handle save action
-fn handle_save(_model: &Model) -> bool {
-    // Save is handled by the existing auto-save logic in main.rs
-    // This is a placeholder for explicit save action
+fn handle_save(model: &mut Model) -> bool {
+    if let Some(ref optimized) = model.optimized_prompt {
+        // Generate output path
+        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+        let filename = format!("optimized_{}.txt", timestamp);
+        let output_dir = std::path::PathBuf::from("copt-output");
+        let output_path = output_dir.join(&filename);
+
+        // Create output directory if needed
+        if let Err(e) = std::fs::create_dir_all(&output_dir) {
+            model.set_status_message(
+                format!("✗ Failed to create directory: {}", e),
+                Duration::from_secs(5),
+            );
+            return true;
+        }
+
+        // Write the optimized prompt
+        match std::fs::write(&output_path, optimized) {
+            Ok(()) => {
+                model.set_status_message(
+                    format!("✓ Saved to {}", output_path.display()),
+                    Duration::from_secs(5),
+                );
+            }
+            Err(e) => {
+                model.set_status_message(format!("✗ Save failed: {}", e), Duration::from_secs(5));
+            }
+        }
+        return true; // Trigger redraw to show feedback
+    }
     false
+}
+
+/// Handle opening optimized prompt in default editor
+fn handle_open_in_editor(model: &mut Model) -> bool {
+    if let Some(ref optimized) = model.optimized_prompt {
+        // Create a temp file with the optimized prompt
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join(format!("copt_optimized_{}.txt", std::process::id()));
+
+        // Write optimized prompt to temp file
+        match std::fs::File::create(&temp_path) {
+            Ok(mut file) => {
+                if let Err(e) = file.write_all(optimized.as_bytes()) {
+                    model.set_status_message(
+                        format!("✗ Failed to write temp file: {}", e),
+                        Duration::from_secs(5),
+                    );
+                    return true;
+                }
+            }
+            Err(e) => {
+                model.set_status_message(
+                    format!("✗ Failed to create temp file: {}", e),
+                    Duration::from_secs(5),
+                );
+                return true;
+            }
+        }
+
+        // Get editor from environment
+        let editor = std::env::var("EDITOR")
+            .or_else(|_| std::env::var("VISUAL"))
+            .unwrap_or_else(|_| {
+                if cfg!(target_os = "macos") {
+                    "nano".to_string()
+                } else if cfg!(target_os = "windows") {
+                    "notepad".to_string()
+                } else {
+                    "vi".to_string()
+                }
+            });
+
+        // Build editor command with wait flags for GUI editors
+        let (editor_cmd, editor_args) = build_editor_command(&editor, &temp_path);
+
+        // Spawn editor (don't wait - let user work in editor)
+        match std::process::Command::new(&editor_cmd)
+            .args(&editor_args)
+            .spawn()
+        {
+            Ok(_) => {
+                model.set_status_message(
+                    format!("✓ Opened in {}", editor_cmd),
+                    Duration::from_secs(3),
+                );
+            }
+            Err(e) => {
+                model.set_status_message(
+                    format!("✗ Failed to open editor: {}", e),
+                    Duration::from_secs(5),
+                );
+            }
+        }
+        return true;
+    }
+    false
+}
+
+/// Build editor command with appropriate wait flags for GUI editors
+fn build_editor_command(editor: &str, file_path: &std::path::Path) -> (String, Vec<String>) {
+    let editor_lower = editor.to_lowercase();
+    let file_arg = file_path.to_string_lossy().to_string();
+
+    // Extract just the binary name for matching (handle full paths)
+    let editor_name = std::path::Path::new(editor)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(editor)
+        .to_lowercase();
+
+    // VSCode: `code` (no --wait needed for viewing)
+    if editor_name.contains("code") || editor_lower.contains("visual studio code") {
+        return (editor.to_string(), vec![file_arg]);
+    }
+
+    // Zed: `zed` or `/path/to/Zed.app/.../cli`
+    if editor_name == "cli" && editor_lower.contains("zed") {
+        return (editor.to_string(), vec![file_arg]);
+    }
+    if editor_name.contains("zed") {
+        return (editor.to_string(), vec![file_arg]);
+    }
+
+    // Default: terminal editors (vim, nano, emacs, etc.)
+    (editor.to_string(), vec![file_arg])
 }
 
 /// Copy text to system clipboard

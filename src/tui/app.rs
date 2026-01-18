@@ -46,6 +46,9 @@ pub fn run_interactive(model: &mut Model) -> io::Result<()> {
                 }
                 _ => {}
             }
+        } else {
+            // No event - send Tick for periodic updates (e.g., status message expiry)
+            update(model, Msg::Tick);
         }
 
         // Check if we should quit
