@@ -238,3 +238,27 @@ When bumping the version for a new release:
      --title "vX.Y.Z - Release Title" \
      --notes "Release notes here"
    ```
+
+## CI Tips
+
+### Skip CI for Non-Code Changes
+
+To skip CI for documentation-only commits (README, CHANGELOG, etc.), add `[skip ci]` to the commit message:
+
+```bash
+git commit -m "docs: update README [skip ci]"
+```
+
+Supported skip patterns:
+- `[skip ci]` or `[ci skip]`
+- `[skip actions]` or `[actions skip]`
+- `[no ci]`
+
+Use this for:
+- Documentation updates
+- README changes
+- Changelog tweaks
+- Comment-only changes
+- Other non-code modifications
+
+**Note**: Don't skip CI for any changes that affect code, tests, or build configuration.
