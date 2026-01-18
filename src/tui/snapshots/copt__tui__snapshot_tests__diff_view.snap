@@ -1,6 +1,5 @@
 ---
 source: src/tui/snapshot_tests.rs
-assertion_line: 115
 expression: output
 ---
 ⚡  CLAUDE PROMPT OPTIMIZER v0.2.1                                               
@@ -26,4 +25,4 @@ expression: output
 ││                                     ││                                     ││
 │└─────────────────────────────────────┘└─────────────────────────────────────┘│
 └──────────────────────────────────────────────────────────────────────────────┘
-Esc:return  ↑↓:scroll  c:copy  s:save  q:quit
+Esc:return  ↑↓:scroll  c:copy  s:save  e:edit  q:quit

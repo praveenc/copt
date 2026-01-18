@@ -148,14 +148,13 @@ pub fn render_suggest_modal(frame: &mut Frame, state: &SuggestModalState) {
 
     let theme = theme();
 
-    // Calculate modal height based on content
-    // Header (3) + suggestions (2 lines each) + spacing (2) + footer (2)
-    let content_height = 7 + (state.suggestions.len() * 2) as u16;
-    let modal_height = content_height.min(80);
-    let modal_width = 70;
+    // Use percentages for centered_rect (it expects percent values 0-100)
+    // Width: 80% of screen, Height: 80% of screen to ensure all content fits
+    let modal_width_percent = 80;
+    let modal_height_percent = 80;
 
     // Create centered area for modal
-    let area = centered_rect(modal_width, modal_height, frame.area());
+    let area = centered_rect(modal_width_percent, modal_height_percent, frame.area());
 
     // Clear the background
     frame.render_widget(Clear, area);

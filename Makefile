@@ -1,4 +1,4 @@
-.PHONY: build release test lint fmt fmt-check clean run ci check
+.PHONY: build release test lint fmt fmt-check clean run ci ci-debug ci-release check
 
 build:
 	cargo build
@@ -24,8 +24,14 @@ clean:
 run:
 	cargo run -- --help
 
-# CI: verify formatting, lint, build, test (correct order, no auto-fix)
-ci: fmt-check lint build test
+# CI with debug build: verify formatting, lint, build, test (for development/testing)
+ci-debug: fmt-check lint build test
+
+# CI with release build: verify formatting, lint, release build, test (for releases)
+ci-release: fmt-check lint release test
+
+# Default CI target (alias for ci-debug)
+ci: ci-debug
 
 # Local dev: auto-fix formatting, then lint and test
 check: fmt lint test

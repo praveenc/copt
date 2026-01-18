@@ -296,6 +296,8 @@ impl Model {
         self.optimized_prompt = Some(optimized);
         self.stats = Some(stats);
         self.phase = AppPhase::Done;
+        // Default to Diff view when optimization completes (better UX - user sees changes immediately)
+        self.current_view = View::Diff;
     }
 
     /// Set error state

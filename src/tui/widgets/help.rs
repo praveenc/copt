@@ -67,6 +67,10 @@ pub fn render_help(frame: &mut Frame, area: Rect, _model: &Model) {
             Span::styled("Save optimized prompt to file", theme.text),
         ]),
         Line::from(vec![
+            Span::styled("  e          ", theme.key),
+            Span::styled("Open optimized prompt in editor", theme.text),
+        ]),
+        Line::from(vec![
             Span::styled("  r          ", theme.key),
             Span::styled("Re-run optimization", theme.text),
         ]),

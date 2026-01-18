@@ -38,6 +38,8 @@ pub fn render_status_bar(frame: &mut Frame, area: Rect, model: &Model) {
         hints.push(key_hint("c", "copy"));
         hints.push(Span::raw("  "));
         hints.push(key_hint("s", "save"));
+        hints.push(Span::raw("  "));
+        hints.push(key_hint("e", "edit"));
     }
 
     hints.push(Span::raw("  "));
@@ -75,6 +77,8 @@ pub fn render_status_bar_diff(frame: &mut Frame, area: Rect, model: &Model) {
         key_hint("c", "copy"),
         Span::raw("  "),
         key_hint("s", "save"),
+        Span::raw("  "),
+        key_hint("e", "edit"),
         Span::raw("  "),
         key_hint("q", "quit"),
     ];

@@ -25,4 +25,4 @@ Optimize prompts for Claude 4.5
 │PROVIDER                                                                      │
 │Service:          Bedrock                                                     │
 └──────────────────────────────────────────────────────────────────────────────┘
-↑↓:nav  Enter:collapse  d:diff  c:copy  s:save  ?:help  q:quit
+↑↓:nav  Enter:collapse  d:diff  c:copy  s:save  e:edit  ?:help  q:quit
