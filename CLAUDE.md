@@ -6,15 +6,68 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `copt` is a Rust CLI tool that optimizes prompts for Claude 4.5 models. It analyzes prompts for anti-patterns based on Anthropic's best practices and rewrites them using either static rules or LLM-powered optimization.
 
-## Container Requirement
+## Git Operations
 
 **All git operations (commit, push, tag) must run inside the git-workspace container.**
 
-### Setup
+There are two ways to work with the container, depending on your IDE:
+
+| Environment | When to Use | Git Command Style |
+|-------------|-------------|-------------------|
+| **Zed Dev Container** | Running inside the container (via Zed) | Direct: `git commit -m "..."` |
+| **From Host (docker exec)** | Running outside the container (other IDEs, CI, terminal) | Prefixed: `docker exec my-git-workspace git -C /workspace/repos/copt commit -m "..."` |
+
+### Zed Dev Container (Recommended for Zed Users)
+
+When working in Zed with the dev container connected, git commands run directly without `docker exec` prefixes.
+
+#### Detecting Dev Container Environment
+
+Check if you're running inside the dev container:
+```bash
+# If this shows "Docker Debug" hints, you're inside the dev container
+echo $HOSTNAME  # Shows container ID like "7e1040108a40"
+
+# Or check for the container indicator
+test -f /.dockerenv && echo "Inside container" || echo "On host"
+```
+
+#### Verify Setup
+```bash
+gh auth status                    # Should show: ✓ Logged in to github.com account praveenc
+git config user.name              # Should show: Praveen Chamarthi  
+git config user.email             # Should show: 1090396+praveenc@users.noreply.github.com
+```
+
+#### Git Commands (Dev Container)
+```bash
+git add -A
+git commit -m "feat: your message"
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin main --tags
+gh release create vX.Y.Z --repo praveenc/copt --title "vX.Y.Z" --notes "Release notes"
+```
+
+#### Opening in Dev Container
+1. Open `copt` folder in Zed
+2. Click "Open in Dev Container" when toast appears (or use `project: open remote` → "Connect Dev Container")
+3. Wait for container to start and Zed Remote Server to connect
+4. Title bar indicates dev container connection
+
+See `docs/DEV_CONTAINERS.md` for detailed setup and troubleshooting.
+
+### From Host (docker exec)
+
+Use this approach when running **outside** the container:
+- Working from a host terminal (not inside Zed dev container)
+- Running CI/CD scripts
+- Using IDEs without dev container support
+
+#### Setup
 1. **Check if running**: `docker ps --filter name=my-git-workspace --format '{{.Names}}'`
 2. **Start only if not running**: `docker compose run -d --rm --name my-git-workspace git-workspace`
 
-### Verify Git Identity
+#### Verify Git Identity
 Before any commit, verify git config (must run from repo directory):
 ```bash
 docker exec -w /workspace/repos/copt my-git-workspace git-test
@@ -23,7 +76,7 @@ Expected: username `praveenc`, email `1090396+praveenc@users.noreply.github.com`
 
 **Note**: Running from `/workspace` root will show `not set` for user.name/email since git config is set at repo level.
 
-### Running Git Commands
+#### Git Commands (From Host)
 ```bash
 docker exec my-git-workspace git -C /workspace/repos/copt <command>
 docker exec my-git-workspace gh <command>
@@ -227,6 +280,16 @@ When bumping the version for a new release:
    ```
 
 5. **Commit, tag, and push**
+
+   **In Zed Dev Container:**
+   ```bash
+   git add -A
+   git commit -m "chore: bump version to X.Y.Z"
+   git tag -a vX.Y.Z -m "Release vX.Y.Z - Description"
+   git push origin main --tags
+   ```
+
+   **From Host (docker exec):**
    ```bash
    docker exec my-git-workspace git -C /workspace/repos/copt add -A
    docker exec my-git-workspace git -C /workspace/repos/copt commit -m "chore: bump version to X.Y.Z"
@@ -235,6 +298,16 @@ When bumping the version for a new release:
    ```
 
 6. **Create GitHub release**
+
+   **In Zed Dev Container:**
+   ```bash
+   gh release create vX.Y.Z \
+     --repo praveenc/copt \
+     --title "vX.Y.Z - Release Title" \
+     --notes "Release notes here"
+   ```
+
+   **From Host (docker exec):**
    ```bash
    docker exec my-git-workspace gh release create vX.Y.Z \
      --repo praveenc/copt \
