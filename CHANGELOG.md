@@ -5,6 +5,27 @@ All notable changes to `copt` (Claude Prompt Optimizer) will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-01-23
+
+### Fixed
+
+- **Bug: `--analyze` mode incorrectly saved files** — Analyze-only mode now correctly skips file saving (was saving to `copt-output/` even though no optimization occurred)
+- **Bug: Suggest modal ESC key didn't work after selection** — Users could get stuck in the suggestion modal after pressing Space to select; ESC and Enter now properly dismiss the modal
+- **Bug: `s` (save) and `e` (edit) shortcuts had suboptimal UX** — Both shortcuts now save to `copt-output/` AND auto-open in the user's default editor, then quit the TUI (no extra steps needed)
+
+### Changed
+
+- **`s` shortcut behavior**: Now saves to `copt-output/optimized_xxx.txt` and opens in `$EDITOR`, then quits
+- **`e` shortcut behavior**: Now identical to `s` — saves to permanent location (not temp) and opens in editor, then quits
+- **TUI auto-quit**: After successful save + editor open, the TUI exits automatically (user is done with copt at that point)
+
+### Technical
+
+- Added 7 new tests for suggest modal dismissal behavior
+- Test suite expanded to 121 tests (from 114)
+
+---
+
 ## [0.2.2] - 2026-01-18
 
 ### Added
@@ -233,7 +254,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/praveenc/copt/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/praveenc/copt/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/praveenc/copt/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/praveenc/copt/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/praveenc/copt/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/praveenc/copt/compare/v0.1.1...v0.2.0

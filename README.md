@@ -303,18 +303,18 @@ When a vague prompt is detected (EXP005/EXP006), a **suggestion modal** appears 
 
 **Keyboard shortcuts in interactive mode:**
 
-| Key       | Action                      |
-| --------- | --------------------------- |
-| `q`       | Quit                        |
-| `d`       | Toggle diff view            |
-| `?`       | Show help                   |
-| `c`       | Copy optimized to clipboard |
-| `s`       | Save optimized to file      |
-| `e`       | Open optimized in editor    |
-| `↑/↓`     | Navigate issues/suggestions |
-| `Space`   | Toggle suggestion checkbox  |
-| `Enter`   | Apply / Expand-collapse     |
-| `Esc`     | Dismiss modal / Go back     |
+| Key       | Action                              |
+| --------- | ----------------------------------- |
+| `q`       | Quit                                |
+| `d`       | Toggle diff view                    |
+| `?`       | Show help                           |
+| `c`       | Copy optimized to clipboard         |
+| `s`       | Save to file, open in editor & quit |
+| `e`       | Save to file, open in editor & quit |
+| `↑/↓`     | Navigate issues/suggestions         |
+| `Space`   | Toggle suggestion checkbox          |
+| `Enter`   | Apply / Expand-collapse             |
+| `Esc`     | Dismiss modal / Go back             |
 
 ---
 

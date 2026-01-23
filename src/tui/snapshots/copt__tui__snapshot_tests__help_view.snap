@@ -2,7 +2,7 @@
 source: src/tui/snapshot_tests.rs
 expression: output
 ---
-⚡  CLAUDE PROMPT OPTIMIZER v0.2.2                                               
+⚡  CLAUDE PROMPT OPTIMIZER v0.2.3                                               
                                                                                 
 ────────────────────────────────────────────────────────────────────────────────
 ┌ Keyboard Shortcuts ──────────────────────────────────────────────────────────┐
