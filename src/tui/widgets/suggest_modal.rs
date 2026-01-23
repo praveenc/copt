@@ -272,6 +272,7 @@ pub fn handle_suggest_modal_key(
         }
         KeyCode::Enter => {
             // Apply selections and close
+            state.dismiss();
             (true, true, true)
         }
         KeyCode::Esc => {
@@ -451,5 +452,86 @@ mod tests {
             .unwrap();
 
         // Should render without panic when not visible
+    }
+
+    #[test]
+    fn test_esc_key_dismisses_modal() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let issues = vec![make_issue("EXP005")];
+        let mut state = SuggestModalState::from_issues(&issues);
+
+        assert!(state.visible);
+
+        // Press ESC
+        let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+        let (handled, should_apply, dismissed) = handle_suggest_modal_key(&mut state, key);
+
+        assert!(handled);
+        assert!(!should_apply); // ESC should not apply selections
+        assert!(dismissed);
+        assert!(!state.visible); // Modal should be dismissed
+    }
+
+    #[test]
+    fn test_esc_key_dismisses_modal_after_selection() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let issues = vec![make_issue("EXP005")];
+        let mut state = SuggestModalState::from_issues(&issues);
+
+        // Make a selection first
+        state.toggle_current();
+        assert!(state.has_selections());
+        assert!(state.visible);
+
+        // Press ESC - should dismiss without applying
+        let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+        let (handled, should_apply, dismissed) = handle_suggest_modal_key(&mut state, key);
+
+        assert!(handled);
+        assert!(!should_apply); // ESC should not apply even with selections
+        assert!(dismissed);
+        assert!(!state.visible); // Modal should be dismissed
+    }
+
+    #[test]
+    fn test_enter_key_dismisses_modal() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let issues = vec![make_issue("EXP005")];
+        let mut state = SuggestModalState::from_issues(&issues);
+
+        // Make a selection
+        state.toggle_current();
+        assert!(state.visible);
+
+        // Press Enter
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let (handled, should_apply, dismissed) = handle_suggest_modal_key(&mut state, key);
+
+        assert!(handled);
+        assert!(should_apply); // Enter should apply selections
+        assert!(dismissed);
+        assert!(!state.visible); // Modal should be dismissed
+    }
+
+    #[test]
+    fn test_space_does_not_dismiss_modal() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let issues = vec![make_issue("EXP005")];
+        let mut state = SuggestModalState::from_issues(&issues);
+
+        assert!(state.visible);
+
+        // Press Space (toggle selection)
+        let key = KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE);
+        let (handled, should_apply, dismissed) = handle_suggest_modal_key(&mut state, key);
+
+        assert!(handled);
+        assert!(!should_apply);
+        assert!(!dismissed); // Space should NOT dismiss
+        assert!(state.visible); // Modal should still be visible
     }
 }

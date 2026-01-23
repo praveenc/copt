@@ -635,8 +635,8 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
     let output_path = if let Some(ref explicit_output) = cli.output {
         // User specified explicit output path (always respect this)
         Some(explicit_output.clone())
-    } else if !cli.no_save && !cli.offline && cli.format != OutputFormat::Json {
-        // Auto-save to output directory (only when not in offline mode)
+    } else if !cli.no_save && !cli.offline && !cli.analyze && cli.format != OutputFormat::Json {
+        // Auto-save to output directory (only when not in offline mode or analyze mode)
         let timestamp = Local::now().format("%Y%m%d_%H%M%S");
         let filename = format!("optimized_{}.txt", timestamp);
         Some(cli.output_dir.join(filename))

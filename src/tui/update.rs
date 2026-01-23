@@ -8,7 +8,6 @@ use std::time::Duration;
 
 use chrono::Local;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use std::io::Write;
 
 use super::model::{Model, View};
 use super::widgets::handle_suggest_modal_key;
@@ -57,13 +56,17 @@ fn handle_key(model: &mut Model, key: KeyEvent) -> bool {
 
     // Handle suggest modal if visible
     if model.suggest_modal.visible {
-        let (handled, should_apply, _dismissed) =
+        let (handled, should_apply, dismissed) =
             handle_suggest_modal_key(&mut model.suggest_modal, key);
         if handled {
             // If user applied suggestions, update the prompt
             if should_apply && model.suggest_modal.has_selections() {
                 let enhanced = model.suggest_modal.apply_to_prompt(&model.original_prompt);
                 model.original_prompt = enhanced;
+            }
+            // Dismiss modal if requested (ESC or Enter)
+            if dismissed {
+                model.suggest_modal.dismiss();
             }
             return true;
         }
@@ -212,7 +215,7 @@ fn handle_copy(model: &mut Model) -> bool {
     false
 }
 
-/// Handle save action
+/// Handle save action - saves to copt-output/ and auto-opens in editor
 fn handle_save(model: &mut Model) -> bool {
     if let Some(ref optimized) = model.optimized_prompt {
         // Generate output path
@@ -231,50 +234,12 @@ fn handle_save(model: &mut Model) -> bool {
         }
 
         // Write the optimized prompt
-        match std::fs::write(&output_path, optimized) {
-            Ok(()) => {
-                model.set_status_message(
-                    format!("✓ Saved to {}", output_path.display()),
-                    Duration::from_secs(5),
-                );
-            }
-            Err(e) => {
-                model.set_status_message(format!("✗ Save failed: {}", e), Duration::from_secs(5));
-            }
-        }
-        return true; // Trigger redraw to show feedback
-    }
-    false
-}
-
-/// Handle opening optimized prompt in default editor
-fn handle_open_in_editor(model: &mut Model) -> bool {
-    if let Some(ref optimized) = model.optimized_prompt {
-        // Create a temp file with the optimized prompt
-        let temp_dir = std::env::temp_dir();
-        let temp_path = temp_dir.join(format!("copt_optimized_{}.txt", std::process::id()));
-
-        // Write optimized prompt to temp file
-        match std::fs::File::create(&temp_path) {
-            Ok(mut file) => {
-                if let Err(e) = file.write_all(optimized.as_bytes()) {
-                    model.set_status_message(
-                        format!("✗ Failed to write temp file: {}", e),
-                        Duration::from_secs(5),
-                    );
-                    return true;
-                }
-            }
-            Err(e) => {
-                model.set_status_message(
-                    format!("✗ Failed to create temp file: {}", e),
-                    Duration::from_secs(5),
-                );
-                return true;
-            }
+        if let Err(e) = std::fs::write(&output_path, optimized) {
+            model.set_status_message(format!("✗ Save failed: {}", e), Duration::from_secs(5));
+            return true;
         }
 
-        // Get editor from environment
+        // Auto-open in editor after successful save
         let editor = std::env::var("EDITOR")
             .or_else(|_| std::env::var("VISUAL"))
             .unwrap_or_else(|_| {
@@ -287,23 +252,24 @@ fn handle_open_in_editor(model: &mut Model) -> bool {
                 }
             });
 
-        // Build editor command with wait flags for GUI editors
-        let (editor_cmd, editor_args) = build_editor_command(&editor, &temp_path);
+        let (editor_cmd, editor_args) = build_editor_command(&editor, &output_path);
 
-        // Spawn editor (don't wait - let user work in editor)
         match std::process::Command::new(&editor_cmd)
             .args(&editor_args)
             .spawn()
         {
             Ok(_) => {
-                model.set_status_message(
-                    format!("✓ Opened in {}", editor_cmd),
-                    Duration::from_secs(3),
-                );
+                // File saved and editor opened - quit the TUI
+                model.should_quit = true;
             }
             Err(e) => {
+                // File was saved but editor failed - stay open to show error
                 model.set_status_message(
-                    format!("✗ Failed to open editor: {}", e),
+                    format!(
+                        "✓ Saved to {} (editor failed: {})",
+                        output_path.display(),
+                        e
+                    ),
                     Duration::from_secs(5),
                 );
             }
@@ -311,6 +277,13 @@ fn handle_open_in_editor(model: &mut Model) -> bool {
         return true;
     }
     false
+}
+
+/// Handle opening optimized prompt in default editor
+/// Saves to copt-output/ first, then opens the saved file in editor
+fn handle_open_in_editor(model: &mut Model) -> bool {
+    // Delegate to handle_save which now saves AND opens in editor
+    handle_save(model)
 }
 
 /// Build editor command with appropriate wait flags for GUI editors
@@ -431,5 +404,95 @@ mod tests {
 
         handle_key(&mut model, key);
         assert_eq!(model.current_view, View::Main);
+    }
+
+    #[test]
+    fn test_suggest_modal_esc_dismisses_via_handle_key() {
+        use crate::analyzer::Severity;
+        use crate::tui::widgets::SuggestModalState;
+        use crate::Issue;
+
+        let mut model = Model::default();
+
+        // Set up a visible suggest modal with EXP005
+        let issues = vec![Issue {
+            id: "EXP005".to_string(),
+            category: "explicitness".to_string(),
+            severity: Severity::Warning,
+            message: "Test".to_string(),
+            line: None,
+            suggestion: None,
+        }];
+        model.suggest_modal = SuggestModalState::from_issues(&issues);
+        assert!(model.suggest_modal.visible);
+
+        // Press ESC
+        let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+        let handled = handle_key(&mut model, key);
+
+        assert!(handled);
+        assert!(!model.suggest_modal.visible); // Modal should be dismissed
+    }
+
+    #[test]
+    fn test_suggest_modal_enter_dismisses_via_handle_key() {
+        use crate::analyzer::Severity;
+        use crate::tui::widgets::SuggestModalState;
+        use crate::Issue;
+
+        let mut model = Model::default();
+        model.original_prompt = "You are an assistant.".to_string();
+
+        // Set up a visible suggest modal with EXP005
+        let issues = vec![Issue {
+            id: "EXP005".to_string(),
+            category: "explicitness".to_string(),
+            severity: Severity::Warning,
+            message: "Test".to_string(),
+            line: None,
+            suggestion: None,
+        }];
+        model.suggest_modal = SuggestModalState::from_issues(&issues);
+        model.suggest_modal.toggle_current(); // Select something
+        assert!(model.suggest_modal.visible);
+        assert!(model.suggest_modal.has_selections());
+
+        // Press Enter
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let handled = handle_key(&mut model, key);
+
+        assert!(handled);
+        assert!(!model.suggest_modal.visible); // Modal should be dismissed
+                                               // Prompt should be enhanced
+        assert!(model.original_prompt.len() > "You are an assistant.".len());
+    }
+
+    #[test]
+    fn test_suggest_modal_space_does_not_dismiss() {
+        use crate::analyzer::Severity;
+        use crate::tui::widgets::SuggestModalState;
+        use crate::Issue;
+
+        let mut model = Model::default();
+
+        // Set up a visible suggest modal
+        let issues = vec![Issue {
+            id: "EXP005".to_string(),
+            category: "explicitness".to_string(),
+            severity: Severity::Warning,
+            message: "Test".to_string(),
+            line: None,
+            suggestion: None,
+        }];
+        model.suggest_modal = SuggestModalState::from_issues(&issues);
+        assert!(model.suggest_modal.visible);
+
+        // Press Space (toggle selection)
+        let key = KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE);
+        let handled = handle_key(&mut model, key);
+
+        assert!(handled);
+        assert!(model.suggest_modal.visible); // Modal should still be visible
+        assert!(model.suggest_modal.has_selections()); // Selection should be toggled
     }
 }
