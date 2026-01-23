@@ -152,4 +152,73 @@ Before considering code complete:
 
 ---
 
+## Release Process
+
+### 6. GitHub Release Titles
+
+**Problem:** Adding descriptive suffixes to release titles makes them inconsistent.
+
+```bash
+# ❌ WRONG - extra description in title
+gh release create v0.2.3 --title "v0.2.3 - TUI Bug Fixes"
+```
+
+```bash
+# ✅ CORRECT - version only
+gh release create v0.2.3 --title "v0.2.3"
+```
+
+**Rule:** Release titles should be the version number only. Put descriptions in the release notes body.
+
+---
+
+### 7. Version References in Documentation
+
+**Problem:** Version numbers get hardcoded in multiple places and become stale.
+
+Places to check when bumping versions:
+- `Cargo.toml` — The source of truth
+- `src/tui/snapshots/*.snap` — TUI snapshot tests contain version in header
+- `README.md` — Example outputs, curl download URLs
+- `CHANGELOG.md` — Release notes
+
+**Rule:** After bumping `Cargo.toml`, grep for the old version:
+```bash
+grep -r "v0\.2\.2" --include="*.md" --include="*.snap"
+```
+
+---
+
+### 8. README Conciseness
+
+**Problem:** READMEs that try to document everything become overwhelming.
+
+**Principles:**
+- README goal: Get user from zero to running in <2 minutes
+- Move detailed content to `docs/` and link to it
+- Use collapsible `<details>` for reference material (e.g., `--help` output)
+- Avoid large code output blocks — they dominate the page
+
+**Structure:**
+1. One-line description
+2. Installation (brief)
+3. Quick start (3-4 commands max)
+4. Core features (brief)
+5. Links to detailed docs
+
+---
+
+## Pre-Release Checklist
+
+Before tagging a release:
+
+1. [ ] Version bumped in `Cargo.toml`
+2. [ ] Snapshot tests updated (`cargo insta test --accept` or manual sed)
+3. [ ] `CHANGELOG.md` updated with release date
+4. [ ] Version references in `README.md` updated
+5. [ ] `make ci` passes
+6. [ ] Release title is just the version (e.g., "v0.2.3")
+
+---
+
 *Last updated: 2026-01-23*
