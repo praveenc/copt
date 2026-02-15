@@ -201,8 +201,6 @@ fn dirs_home() -> Option<PathBuf> {
 }
 
 /// Create a default configuration file
-// TODO: Wire into --config init subcommand (Phase 4)
-#[allow(dead_code)]
 pub fn create_default_config() -> Result<PathBuf> {
     let config_path = get_config_path();
 

@@ -125,6 +125,10 @@ struct Cli {
     #[arg(long)]
     skip_connectivity_check: bool,
 
+    /// Create default config file and exit
+    #[arg(long = "config-init")]
+    config_init: bool,
+
     /// Verbose output
     #[arg(short, long)]
     verbose: bool,
@@ -165,6 +169,24 @@ async fn main() -> Result<()> {
 
     // Load config file and apply defaults for fields not explicitly set on CLI
     apply_config_defaults(&mut cli, &matches);
+
+    // Handle --config-init: create default config and exit
+    if cli.config_init {
+        match cli::config::create_default_config() {
+            Ok(path) => {
+                println!(
+                    "{} Created default config at: {}",
+                    "✓".green(),
+                    path.display()
+                );
+                std::process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("{} Failed to create config: {}", "Error:".red().bold(), e);
+                std::process::exit(1);
+            }
+        }
+    }
 
     // Resolve model aliases (e.g., "sonnet" → full Bedrock ARN)
     cli.model = cli::resolve_model_id(&cli.model);
