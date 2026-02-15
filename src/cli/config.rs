@@ -71,8 +71,12 @@ impl Default for AnthropicConfig {
 pub struct BedrockConfig {
     /// AWS region
     pub region: String,
-    /// AWS profile name
+    /// AWS profile name (for SigV4 fallback)
     pub profile: Option<String>,
+    /// Bedrock API key (Bearer token) — preferred auth method
+    pub api_key: Option<String>,
+    /// Environment variable name for API key
+    pub api_key_env: String,
     /// Maximum tokens for requests
     pub max_tokens: u32,
 }
@@ -82,6 +86,8 @@ impl Default for BedrockConfig {
         Self {
             region: "us-west-2".to_string(),
             profile: None,
+            api_key: None,
+            api_key_env: "AWS_BEARER_TOKEN_BEDROCK".to_string(),
             max_tokens: 4096,
         }
     }
