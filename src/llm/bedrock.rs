@@ -84,8 +84,11 @@ impl BedrockClient {
                 {
                     anyhow::bail!(
                         "AWS credentials not found or invalid.\n\n\
-                        Please ensure you have valid AWS credentials configured:\n\
-                        • Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables, or\n\
+                        Simplest fix: use a Bedrock API key instead:\n\
+                        export AWS_BEARER_TOKEN_BEDROCK=\"your-key-here\"\n\
+                        (Generate at: Bedrock console → API keys)\n\n\
+                        Or configure AWS credentials:\n\
+                        • Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or\n\
                         • Configure credentials in ~/.aws/credentials, or\n\
                         • Use AWS SSO: run 'aws sso login'\n\n\
                         Region: {}\n\

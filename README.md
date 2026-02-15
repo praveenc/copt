@@ -50,14 +50,17 @@ cargo install --git https://github.com/praveenc/copt
 ### 1. Set Up Credentials
 
 ```bash
-# AWS Bedrock (default)
-export AWS_ACCESS_KEY_ID="..."
-export AWS_SECRET_ACCESS_KEY="..."
-export AWS_REGION="us-west-2"
+# Bedrock API key (recommended — simplest setup)
+export AWS_BEARER_TOKEN_BEDROCK="your-bedrock-api-key"
 
 # Or Anthropic API
 export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Or AWS credential chain (SigV4 fallback — no API key needed)
+# Uses ~/.aws/credentials, AWS_PROFILE, IAM roles, SSO, etc.
 ```
+
+To generate a Bedrock API key: Bedrock console → API keys → Generate long-term key (up to 1 year).
 
 ### 2. Create a Config File (optional)
 
@@ -65,12 +68,18 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 copt --config-init    # Creates ~/.config/copt/config.toml
 ```
 
-Edit the config to set your preferred defaults:
+Edit the config to set your preferred defaults (including API key):
 
 ```toml
+[default]
 provider = "bedrock"
 model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+[bedrock]
 region = "us-west-2"
+api_key = "your-bedrock-api-key"   # or use AWS_BEARER_TOKEN_BEDROCK env var
+
+[output]
 format = "pretty"
 show_diff = false
 ```

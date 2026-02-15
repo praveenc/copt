@@ -17,7 +17,19 @@ Both the original and optimized prompts are auto-saved to `~/.copt/prompts/YYYY-
 
 - [Raycast](https://raycast.com) installed
 - `copt` binary in your PATH (verify with `copt --version`)
-- AWS credentials configured for Bedrock access
+- Bedrock API key (recommended) or AWS credentials configured
+
+### Authentication
+
+The simplest setup is a Bedrock API key:
+
+1. Go to the [Bedrock console](https://console.aws.amazon.com/bedrock) → API keys → Generate long-term key (up to 1 year)
+2. Add to your shell profile (`~/.zshrc`):
+   ```bash
+   export AWS_BEARER_TOKEN_BEDROCK="your-key-here"
+   ```
+
+Alternatively, use standard AWS credentials (`AWS_PROFILE`, `aws configure`, etc.) — copt falls back to the AWS SDK credential chain automatically.
 
 ### Install the Script Command
 
