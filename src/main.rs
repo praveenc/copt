@@ -42,11 +42,7 @@ struct Cli {
     output: Option<PathBuf>,
 
     /// Output directory for auto-save
-    #[arg(
-        long,
-        value_name = "DIR",
-        hide_default_value = true
-    )]
+    #[arg(long, value_name = "DIR", hide_default_value = true)]
     output_dir: Option<PathBuf>,
 
     /// Disable auto-save
@@ -756,13 +752,10 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
         let slug = utils::generate_prompt_slug(&result.original);
         let filename = format!("{slug}_{timestamp}_optimized.txt");
 
-        let base_dir = cli
-            .output_dir
-            .clone()
-            .unwrap_or_else(|| {
-                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                PathBuf::from(home).join(".copt").join("prompts")
-            });
+        let base_dir = cli.output_dir.clone().unwrap_or_else(|| {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            PathBuf::from(home).join(".copt").join("prompts")
+        });
         Some(base_dir.join(&date_dir).join(filename))
     } else {
         None
@@ -916,13 +909,10 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
             let slug = utils::generate_prompt_slug(&model.original_prompt);
             let filename = format!("{slug}_{timestamp}_optimized.txt");
 
-            let base_dir = cli
-                .output_dir
-                .clone()
-                .unwrap_or_else(|| {
-                    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                    PathBuf::from(home).join(".copt").join("prompts")
-                });
+            let base_dir = cli.output_dir.clone().unwrap_or_else(|| {
+                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                PathBuf::from(home).join(".copt").join("prompts")
+            });
             let output_path = base_dir.join(&date_dir).join(filename);
 
             // Create output directory if it doesn't exist
