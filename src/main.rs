@@ -5,7 +5,7 @@
 
 use anyhow::{Context, Result};
 use chrono::Local;
-use clap::{Parser, ValueEnum};
+use clap::{CommandFactory, FromArgMatches, Parser, ValueEnum};
 use colored::Colorize;
 use std::io::{self, IsTerminal, Read};
 use std::path::PathBuf;
@@ -159,8 +159,12 @@ async fn main() -> Result<()> {
         tracing_subscriber::fmt::init();
     }
 
-    // Parse CLI arguments
-    let mut cli = Cli::parse();
+    // Parse CLI arguments and get matches for detecting explicit vs default values
+    let matches = Cli::command().get_matches();
+    let mut cli = Cli::from_arg_matches(&matches)?;
+
+    // Load config file and apply defaults for fields not explicitly set on CLI
+    apply_config_defaults(&mut cli, &matches);
 
     // Resolve model aliases (e.g., "sonnet" → full Bedrock ARN)
     cli.model = cli::resolve_model_id(&cli.model);
@@ -200,6 +204,79 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Apply config file defaults for CLI fields the user didn't explicitly set.
+/// CLI args always take precedence over config values.
+fn apply_config_defaults(cli: &mut Cli, matches: &clap::ArgMatches) {
+    use clap::parser::ValueSource;
+
+    let config = match cli::config::load_config() {
+        Ok(c) => c,
+        Err(e) => {
+            if cli.verbose {
+                eprintln!("{} Failed to load config: {}", "⚠".yellow(), e);
+            }
+            return;
+        }
+    };
+
+    // Validate config (warn but don't fail)
+    if let Err(e) = config.validate() {
+        if cli.verbose {
+            eprintln!("{} Invalid config: {}", "⚠".yellow(), e);
+        }
+        return;
+    }
+
+    // Apply provider from config if not explicitly set on CLI
+    if matches.value_source("provider") != Some(ValueSource::CommandLine) {
+        match config.default.provider.as_str() {
+            "anthropic" => cli.provider = Provider::Anthropic,
+            "bedrock" => cli.provider = Provider::Bedrock,
+            _ => {} // validated above, but be safe
+        }
+    }
+
+    // Apply model from config if not explicitly set on CLI
+    if matches.value_source("model") != Some(ValueSource::CommandLine)
+        && !config.default.model.is_empty()
+    {
+        cli.model = config.default.model.clone();
+    }
+
+    // Apply region from config if not explicitly set on CLI
+    if matches.value_source("region") != Some(ValueSource::CommandLine)
+        && !config.bedrock.region.is_empty()
+    {
+        cli.region = config.bedrock.region.clone();
+    }
+
+    // Apply output format from config if not explicitly set on CLI
+    if matches.value_source("format") != Some(ValueSource::CommandLine) {
+        match config.output.format.as_str() {
+            "json" => cli.format = OutputFormat::Json,
+            "quiet" => cli.format = OutputFormat::Quiet,
+            "pretty" => cli.format = OutputFormat::Pretty,
+            _ => {}
+        }
+    }
+
+    // Apply show_diff from config (only if not explicitly set — diff is a flag, default false)
+    if !cli.diff && config.output.show_diff {
+        cli.diff = true;
+    }
+
+    if cli.verbose {
+        let config_path = cli::config::get_config_path();
+        if config_path.exists() {
+            eprintln!(
+                "{} Loaded config from: {}",
+                "⚙".bright_black(),
+                config_path.display()
+            );
+        }
+    }
 }
 
 /// Check connectivity to the configured provider

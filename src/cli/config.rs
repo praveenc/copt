@@ -1,9 +1,8 @@
 //! Configuration module for copt (Claude Optimizer)
 //!
 //! Handles loading configuration from files and environment variables.
-
-// TODO: Wire this config system into main.rs (Phase 3 — merge config with CLI args)
-#![allow(dead_code)]
+//! Config is loaded from `~/.config/copt/config.toml` (or `~/.copt.toml` legacy).
+//! CLI args always take precedence over config file values.
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -137,6 +136,8 @@ impl Default for RulesConfig {
 }
 
 /// Provider configuration enum for runtime use
+// TODO: Use when provider-specific config is needed beyond defaults
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum ProviderConfig {
     Anthropic {
@@ -200,6 +201,8 @@ fn dirs_home() -> Option<PathBuf> {
 }
 
 /// Create a default configuration file
+// TODO: Wire into --config init subcommand (Phase 4)
+#[allow(dead_code)]
 pub fn create_default_config() -> Result<PathBuf> {
     let config_path = get_config_path();
 
@@ -245,6 +248,8 @@ impl Config {
     }
 
     /// Get the effective API key for Anthropic
+    // TODO: Use when config-driven provider setup replaces env var checks in main.rs
+    #[allow(dead_code)]
     pub fn get_anthropic_api_key(&self) -> Result<String> {
         std::env::var(&self.anthropic.api_key_env).with_context(|| {
             format!(
@@ -255,6 +260,8 @@ impl Config {
     }
 
     /// Check if a rule is enabled
+    // TODO: Wire into analyzer to filter rules based on config
+    #[allow(dead_code)]
     pub fn is_rule_enabled(&self, rule_id: &str) -> bool {
         // Check if explicitly disabled
         if self.rules.disabled.contains(&rule_id.to_string()) {
@@ -283,12 +290,16 @@ impl Config {
     }
 
     /// Get severity override for a rule
+    // TODO: Wire into analyzer for config-driven severity
+    #[allow(dead_code)]
     pub fn get_severity_override(&self, rule_id: &str) -> Option<&String> {
         self.rules.severity_overrides.get(rule_id)
     }
 }
 
 /// Map rule prefix to category name
+// Used by is_rule_enabled (currently allow(dead_code))
+#[allow(dead_code)]
 fn category_from_prefix(prefix: &str) -> Option<&'static str> {
     match prefix.to_uppercase().as_str() {
         "EXP" => Some("explicitness"),
