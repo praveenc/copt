@@ -5,6 +5,47 @@ All notable changes to `copt` (Claude Prompt Optimizer) will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-14
+
+### Added
+
+- **Config file support**: `copt --config-init` creates `~/.config/copt/config.toml` with defaults for provider, model, region, format, and show_diff. CLI args always take precedence over config values.
+- **Model aliases**: `copt -m sonnet`, `-m opus`, `-m opus-4.6`, `-m haiku` resolve to full Bedrock ARNs
+  - `sonnet` / `sonnet-4.5` → `us.anthropic.claude-sonnet-4-5-20250929-v1:0`
+  - `opus` / `opus-4.5` → `us.anthropic.claude-opus-4-5-20251101-v1:0`
+  - `opus-4.6` → `us.anthropic.claude-opus-4-6-v1`
+  - `haiku` / `haiku-4.5` → `us.anthropic.claude-haiku-4-5-20251001-v1:0`
+- **Enhancement pipeline**: Prompt-aware hints (parallel operations, code exploration, action bias, summary requests) are now appended in offline mode and included as LLM context in online mode
+- **2 new static transforms**: STY001 (negative instructions → positive guidance) and FMT002 (negative format instructions → positive alternatives). Static transform count: 4 → 6.
+- **Connectivity caching**: Successful provider checks cached with 5-minute TTL, eliminating 2-5s latency on repeated invocations
+- **`make ci-quiet` target**: Concise 4-line CI output for agent/automated use
+
+### Fixed
+
+- **STY004/STY002 ordering bug**: Static transforms now apply in fixed priority order. Previously STY002 would lowercase "CRITICAL" before STY004 could match and remove it.
+
+### Changed
+
+- **Shared editor utility**: `build_editor_command` extracted from `main.rs` and `tui/update.rs` into `src/utils/editor.rs`
+- **Lazy regex compilation**: All optimizer transform functions use `LazyLock<Regex>` (compile once, not per-call)
+- **`Provider::as_str()`**: Replaced `format!("{:?}", provider).to_lowercase()` pattern
+
+### Removed
+
+- **6 unused Cargo dependencies**: `tiktoken-rs`, `dotenvy`, `textwrap`, `unicode-segmentation`, `directories`, `futures`
+- **2 dead modules**: `src/rules/mod.rs` (477 lines, duplicated analyzer), `src/utils/file.rs` (205 lines, zero callers)
+- **~30 dead functions** across 11 files (legacy TUI renderers, unused LLM types, orphaned CLI constants, unused text utilities)
+- **Blanket `#![allow(dead_code)]`** stripped from 5 TUI modules, replaced with targeted allows
+
+### Technical
+
+- Net change: -954 lines (31 files, +1,081 / -2,035)
+- Test suite: 121 → 91 (30 dead-code tests removed, 2 new tests added)
+- Config uses clap `value_source()` to distinguish explicit CLI args from defaults
+- Token counting decision: kept `chars/4` heuristic (display-only; providers handle tokenization)
+
+---
+
 ## [0.2.3] - 2026-01-23
 
 ### Fixed
@@ -254,7 +295,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/praveenc/copt/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/praveenc/copt/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/praveenc/copt/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/praveenc/copt/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/praveenc/copt/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/praveenc/copt/compare/v0.2.0...v0.2.1

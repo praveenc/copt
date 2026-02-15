@@ -59,7 +59,25 @@ export AWS_REGION="us-west-2"
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-### 2. Optimize a Prompt
+### 2. Create a Config File (optional)
+
+```bash
+copt --config-init    # Creates ~/.config/copt/config.toml
+```
+
+Edit the config to set your preferred defaults:
+
+```toml
+provider = "bedrock"
+model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+region = "us-west-2"
+format = "pretty"
+show_diff = false
+```
+
+CLI arguments always take precedence over config values.
+
+### 3. Optimize a Prompt
 
 ```bash
 copt "Create a dashboard"           # Direct input
@@ -125,6 +143,7 @@ Options:
       --check <CAT>              Check specific categories
       --no-suggest               Disable auto-suggestions
   -i, --interactive              Full-screen interactive TUI
+      --config-init              Create default config file and exit
       --skip-connectivity-check  Skip connectivity check
   -v, --verbose                  Verbose output
   -h, --help                     Print help
@@ -132,6 +151,22 @@ Options:
 ```
 
 </details>
+
+### Model Aliases
+
+Use short aliases instead of full Bedrock ARNs:
+
+| Alias | Model |
+|-------|-------|
+| `sonnet` / `sonnet-4.5` | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| `opus` / `opus-4.5` | `us.anthropic.claude-opus-4-5-20251101-v1:0` |
+| `opus-4.6` | `us.anthropic.claude-opus-4-6-v1` |
+| `haiku` / `haiku-4.5` | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
+
+```bash
+copt -f prompt.txt -m opus            # Use Claude Opus 4.5
+copt -f prompt.txt -m haiku           # Use Claude Haiku 4.5
+```
 
 ### Common Examples
 
@@ -141,6 +176,7 @@ copt -f prompt.txt --diff             # Show before/after diff
 copt -f prompt.txt -p anthropic       # Use Anthropic API
 copt -f prompt.txt --format json      # JSON output for scripting
 copt -f prompt.txt --no-suggest       # Disable suggestions (for CI)
+copt --config-init                    # Create default config file
 ```
 
 ---
