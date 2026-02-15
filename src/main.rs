@@ -72,6 +72,14 @@ struct Cli {
     #[arg(long, default_value = "us-west-2", hide_default_value = true)]
     region: String,
 
+    /// Bedrock API key (Bearer token). Overrides AWS credential chain.
+    #[arg(
+        long = "bedrock-api-key",
+        env = "AWS_BEARER_TOKEN_BEDROCK",
+        hide = true
+    )]
+    bedrock_api_key: Option<String>,
+
     /// Output format: pretty, json, quiet
     #[arg(long, value_enum, default_value = "pretty", hide_default_value = true)]
     format: OutputFormat,
@@ -284,6 +292,15 @@ fn apply_config_defaults(cli: &mut Cli, matches: &clap::ArgMatches) {
         cli.diff = true;
     }
 
+    // Apply Bedrock API key from config if not set via CLI or env var
+    if cli.bedrock_api_key.is_none() {
+        if let Some(ref key) = config.bedrock.api_key {
+            if !key.is_empty() {
+                cli.bedrock_api_key = Some(key.clone());
+            }
+        }
+    }
+
     if cli.verbose {
         let config_path = cli::config::get_config_path();
         if config_path.exists() {
@@ -323,20 +340,32 @@ async fn check_provider_connectivity(cli: &Cli) -> Result<()> {
 
     match cli.provider {
         Provider::Bedrock => {
+            let auth_method = if cli.bedrock_api_key.is_some() {
+                "API key"
+            } else {
+                "AWS credentials"
+            };
             if !cli.quiet && cli.format != OutputFormat::Quiet {
                 print!(
-                    "{} Checking AWS Bedrock connectivity ({})... ",
+                    "{} Checking Bedrock connectivity ({}, {})... ",
                     "⚡".cyan(),
-                    cli.region.bright_black()
+                    cli.region.bright_black(),
+                    auth_method.bright_black()
                 );
                 // Flush to show the message immediately
                 use std::io::Write;
                 let _ = std::io::stdout().flush();
             }
 
-            let client = llm::BedrockClient::new(&cli.region).await?;
+            let connectivity_result = if let Some(ref api_key) = cli.bedrock_api_key {
+                let client = llm::BedrockApiKeyClient::new(api_key.clone(), &cli.region)?;
+                client.check_connectivity(&cli.model).await
+            } else {
+                let client = llm::BedrockClient::new(&cli.region).await?;
+                client.check_connectivity(&cli.model).await
+            };
 
-            match client.check_connectivity(&cli.model).await {
+            match connectivity_result {
                 Ok(()) => {
                     if !cli.quiet && cli.format != OutputFormat::Quiet {
                         println!("{}", "✓ Connected".green());
@@ -629,7 +658,13 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
                 std::env::var("ANTHROPIC_API_KEY")
                     .context("ANTHROPIC_API_KEY environment variable not set")?,
             )?),
-            Provider::Bedrock => Box::new(llm::BedrockClient::new(&cli.region).await?),
+            Provider::Bedrock => {
+                if let Some(ref api_key) = cli.bedrock_api_key {
+                    Box::new(llm::BedrockApiKeyClient::new(api_key.clone(), &cli.region)?)
+                } else {
+                    Box::new(llm::BedrockClient::new(&cli.region).await?)
+                }
+            }
         };
 
         let result =
@@ -855,7 +890,13 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
                 std::env::var("ANTHROPIC_API_KEY")
                     .context("ANTHROPIC_API_KEY environment variable not set")?,
             )?),
-            Provider::Bedrock => Box::new(llm::BedrockClient::new(&cli.region).await?),
+            Provider::Bedrock => {
+                if let Some(ref api_key) = cli.bedrock_api_key {
+                    Box::new(llm::BedrockApiKeyClient::new(api_key.clone(), &cli.region)?)
+                } else {
+                    Box::new(llm::BedrockClient::new(&cli.region).await?)
+                }
+            }
         };
 
         let prompt_type = analyzer::classify_prompt(prompt);

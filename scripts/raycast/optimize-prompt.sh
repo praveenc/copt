@@ -13,7 +13,8 @@
 # @raycast.authorURL https://github.com/praveenc
 
 # --- Configuration ---
-# Raycast runs in a minimal shell — source your profile for PATH and AWS env vars
+# Raycast runs in a minimal shell — source your profile for PATH
+# If using Bedrock API keys, set AWS_BEARER_TOKEN_BEDROCK in your shell profile
 if [ -f "$HOME/.zshrc" ]; then
   source "$HOME/.zshrc" 2>/dev/null
 elif [ -f "$HOME/.zprofile" ]; then
@@ -25,9 +26,8 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:
 COPT_BIN="${COPT_BIN:-copt}"
 
 # Ensure AWS credentials are available
-# Set these if your .zshrc doesn't export them, or override via Raycast env vars
-# AWS_PROFILE="${AWS_PROFILE:-default}"
-# AWS_REGION="${AWS_REGION:-us-west-2}"
+# Preferred: set AWS_BEARER_TOKEN_BEDROCK in your shell profile (simplest)
+# Alternative: AWS_PROFILE + AWS_REGION for SigV4 credential chain
 
 # --- Preflight ---
 if ! command -v "$COPT_BIN" &>/dev/null; then

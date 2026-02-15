@@ -8,6 +8,7 @@ mod anthropic;
 mod bedrock;
 
 pub use anthropic::AnthropicClient;
+pub use bedrock::BedrockApiKeyClient;
 pub use bedrock::BedrockClient;
 
 use anyhow::Result;

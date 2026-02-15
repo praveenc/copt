@@ -71,8 +71,10 @@ impl Default for AnthropicConfig {
 pub struct BedrockConfig {
     /// AWS region
     pub region: String,
-    /// AWS profile name
+    /// AWS profile name (for SigV4 fallback)
     pub profile: Option<String>,
+    /// Bedrock API key (Bearer token) — preferred auth method
+    pub api_key: Option<String>,
     /// Maximum tokens for requests
     pub max_tokens: u32,
 }
@@ -82,6 +84,7 @@ impl Default for BedrockConfig {
         Self {
             region: "us-west-2".to_string(),
             profile: None,
+            api_key: None,
             max_tokens: 4096,
         }
     }
@@ -200,7 +203,7 @@ fn dirs_home() -> Option<PathBuf> {
         .or_else(|| std::env::var("USERPROFILE").ok().map(PathBuf::from))
 }
 
-/// Create a default configuration file
+/// Create a default configuration file with commented guidance
 pub fn create_default_config() -> Result<PathBuf> {
     let config_path = get_config_path();
 
@@ -209,9 +212,37 @@ pub fn create_default_config() -> Result<PathBuf> {
             .with_context(|| format!("Failed to create config directory: {}", parent.display()))?;
     }
 
-    let default_config = Config::default();
-    let content =
-        toml::to_string_pretty(&default_config).context("Failed to serialize default config")?;
+    let content = r#"# copt configuration
+# CLI arguments always take precedence over these values.
+
+[default]
+provider = "bedrock"       # "bedrock" or "anthropic"
+model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+# Aliases: "sonnet", "opus", "haiku", "sonnet-4.5", "opus-4.5", "haiku-4.5"
+
+[anthropic]
+# api_key_env = "ANTHROPIC_API_KEY"   # env var name (default)
+max_tokens = 4096
+
+[bedrock]
+region = "us-west-2"
+# api_key = ""             # Bedrock API key (Bearer token) — preferred auth
+                           # Or set AWS_BEARER_TOKEN_BEDROCK env var
+                           # Falls back to AWS credential chain (SigV4) if not set
+max_tokens = 4096
+
+[output]
+color = true
+format = "pretty"          # "pretty", "json", or "quiet"
+show_diff = false
+
+[rules]
+enabled_categories = ["all"]
+disabled = []
+disabled_categories = []
+
+[rules.severity_overrides]
+"#;
 
     std::fs::write(&config_path, content)
         .with_context(|| format!("Failed to write config file: {}", config_path.display()))?;
