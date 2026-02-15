@@ -9,3 +9,4 @@ pub mod text;
 
 // Re-export commonly used items
 pub use text::count_tokens;
+pub use text::generate_prompt_slug;
