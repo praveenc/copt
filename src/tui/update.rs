@@ -217,10 +217,17 @@ fn handle_copy(model: &mut Model) -> bool {
 /// Handle save action - saves to copt-output/ and auto-opens in editor
 fn handle_save(model: &mut Model) -> bool {
     if let Some(ref optimized) = model.optimized_prompt {
-        // Generate output path
-        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
-        let filename = format!("optimized_{}.txt", timestamp);
-        let output_dir = std::path::PathBuf::from("copt-output");
+        // Generate output path with smart naming
+        let timestamp = Local::now().format("%H%M%S");
+        let date_dir = Local::now().format("%Y-%m-%d").to_string();
+        let slug = crate::utils::generate_prompt_slug(&model.original_prompt);
+        let filename = format!("{slug}_{timestamp}_optimized.txt");
+
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let output_dir = std::path::PathBuf::from(home)
+            .join(".copt")
+            .join("prompts")
+            .join(&date_dir);
         let output_path = output_dir.join(&filename);
 
         // Create output directory if needed

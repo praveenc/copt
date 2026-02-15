@@ -45,10 +45,9 @@ struct Cli {
     #[arg(
         long,
         value_name = "DIR",
-        default_value = "copt-output",
         hide_default_value = true
     )]
-    output_dir: PathBuf,
+    output_dir: Option<PathBuf>,
 
     /// Disable auto-save
     #[arg(long)]
@@ -679,7 +678,9 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
 
     match cli.format {
         OutputFormat::Json => {
+            let slug = utils::generate_prompt_slug(&result.original);
             let json = serde_json::json!({
+                "name": slug,
                 "original": result.original,
                 "optimized": result.optimized,
                 "issues": result.issues.iter().map(|i| serde_json::json!({
@@ -748,11 +749,21 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
     let output_path = if let Some(ref explicit_output) = cli.output {
         // User specified explicit output path (always respect this)
         Some(explicit_output.clone())
-    } else if !cli.no_save && !cli.offline && !cli.analyze && cli.format != OutputFormat::Json {
-        // Auto-save to output directory (only when not in offline mode or analyze mode)
-        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
-        let filename = format!("optimized_{}.txt", timestamp);
-        Some(cli.output_dir.join(filename))
+    } else if !cli.no_save && !cli.offline && !cli.analyze {
+        // Auto-save to ~/.copt/prompts/YYYY-MM-DD/ (or custom --output-dir)
+        let timestamp = Local::now().format("%H%M%S");
+        let date_dir = Local::now().format("%Y-%m-%d").to_string();
+        let slug = utils::generate_prompt_slug(&result.original);
+        let filename = format!("{slug}_{timestamp}_optimized.txt");
+
+        let base_dir = cli
+            .output_dir
+            .clone()
+            .unwrap_or_else(|| {
+                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                PathBuf::from(home).join(".copt").join("prompts")
+            });
+        Some(base_dir.join(&date_dir).join(filename))
     } else {
         None
     };
@@ -769,7 +780,7 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
         // Derive original prompt path from optimized path
         let original_path = {
             let filename = path.file_name().unwrap().to_string_lossy();
-            let original_filename = filename.replace("optimized_", "original_");
+            let original_filename = filename.replace("_optimized.txt", "_original.txt");
             path.with_file_name(original_filename)
         };
 
@@ -784,8 +795,10 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
             .with_context(|| format!("Failed to write original: {}", original_path.display()))?;
 
         // Also write metadata JSON alongside
+        let slug = utils::generate_prompt_slug(&result.original);
         let metadata_path = path.with_extension("json");
         let metadata = serde_json::json!({
+            "name": slug,
             "timestamp": Local::now().to_rfc3339(),
             "files": {
                 "original": original_path.file_name().unwrap().to_string_lossy(),
@@ -898,9 +911,19 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
     // After TUI exits, handle auto-save if we have results
     if let Some(ref optimized) = model.optimized_prompt {
         if !cli.no_save && !cli.offline {
-            let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-            let filename = format!("optimized_{}.txt", timestamp);
-            let output_path = cli.output_dir.join(filename);
+            let timestamp = chrono::Local::now().format("%H%M%S");
+            let date_dir = chrono::Local::now().format("%Y-%m-%d").to_string();
+            let slug = utils::generate_prompt_slug(&model.original_prompt);
+            let filename = format!("{slug}_{timestamp}_optimized.txt");
+
+            let base_dir = cli
+                .output_dir
+                .clone()
+                .unwrap_or_else(|| {
+                    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                    PathBuf::from(home).join(".copt").join("prompts")
+                });
+            let output_path = base_dir.join(&date_dir).join(filename);
 
             // Create output directory if it doesn't exist
             if let Some(parent) = output_path.parent() {
