@@ -44,13 +44,13 @@ Both LLM clients wait for the full response before displaying anything. For larg
 
 Successful checks now cached with 5-minute TTL in `/tmp/copt_connectivity_<provider>_<region>.cache`.
 
-### 8. Smart prompt naming — Should Fix (Medium)
+### 8. Smart prompt naming — ✅ DONE (v0.3.1)
 
-Saved prompts use generic `optimized_HHMMSS.txt` filenames which are hard to find later. Generate a short descriptive slug from the prompt content (e.g., `dashboard-analytics-api_143022.txt`) so users can identify prompts at a glance without opening each file.
+`generate_prompt_slug()` extracts a descriptive slug from prompt content for filenames (e.g., `dashboard-analytics-api_143022_optimized.txt`). JSON output and metadata include a `name` field.
 
-### 9. Standardize prompt storage to `~/.copt/prompts/` — Should Fix (Medium)
+### 9. Standardize prompt storage to `~/.copt/prompts/` — ✅ DONE (v0.3.1)
 
-Currently saves to `./copt-output/` relative to the working directory, scattering prompt files across the filesystem. Standardize to `~/.copt/prompts/YYYY-MM-DD/` as the default location — centralized, date-bucketed, and consistent with the Raycast integration. The `--output-dir` flag still works for overrides.
+Default save location changed from `./copt-output/` to `~/.copt/prompts/YYYY-MM-DD/`. Date-bucketed, centralized. `--output-dir` still works for overrides.
 
 ## Code Efficiency & Robustness
 

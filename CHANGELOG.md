@@ -5,6 +5,28 @@ All notable changes to `copt` (Claude Prompt Optimizer) will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-02-15
+
+### Added
+
+- **Smart prompt naming**: Saved prompts now use descriptive filenames derived from prompt content (e.g., `dashboard-analytics-api_143022_optimized.txt`) instead of generic `optimized_HHMMSS.txt`
+- **Centralized prompt storage**: Default save location changed from `./copt-output/` to `~/.copt/prompts/YYYY-MM-DD/` — date-bucketed, centralized across all invocations
+- **`name` field in JSON output**: `--format json` and metadata files now include a `name` field with the prompt slug
+- **Raycast script command**: `scripts/raycast/optimize-prompt.sh` — optimize clipboard prompts via Bedrock with a single Raycast keystroke
+
+### Changed
+
+- **`--output-dir` is now optional**: Defaults to `~/.copt/prompts` when not specified. Use `--output-dir <DIR>` to override.
+- **File naming convention**: `<slug>_<HHMMSS>_optimized.txt` / `_original.txt` / `.json` (was `optimized_<HHMMSS>.txt`)
+- **JSON format auto-saves**: `--format json` no longer suppresses auto-save (use `--no-save` explicitly)
+
+### Technical
+
+- New `generate_prompt_slug()` in `src/utils/text.rs` with LazyLock regex, 6 unit tests
+- Test suite: 91 → 97
+
+---
+
 ## [0.3.0] - 2026-02-14
 
 ### Added
@@ -295,7 +317,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/praveenc/copt/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/praveenc/copt/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/praveenc/copt/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/praveenc/copt/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/praveenc/copt/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/praveenc/copt/compare/v0.2.1...v0.2.2

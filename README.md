@@ -109,7 +109,7 @@ copt detects Claude 3.x patterns and rewrites them for Claude 4.5:
 + - Export functionality
 ```
 
-See [docs/RULES.md](docs/RULES.md) for the full list of 27 analysis rules across 8 categories.
+See [docs/RULES.md](docs/RULES.md) for the full list of 25 analysis rules across 8 categories.
 
 ---
 
@@ -129,9 +129,9 @@ Arguments:
 Options:
   -f, --file <FILE>              Read prompt from file
   -o, --output <FILE>            Save optimized prompt to file
-      --output-dir <DIR>         Output directory [default: copt-output]
+      --output-dir <DIR>         Output directory for auto-save
       --no-save                  Disable auto-save
-  -p, --provider <PROVIDER>      Provider: anthropic, bedrock [default: bedrock]
+  -p, --provider <PROVIDER>      Provider: anthropic, bedrock
   -m, --model <MODEL>            Model ID or alias
       --region <REGION>          AWS region for Bedrock
       --format <FORMAT>          Output format: pretty, json, quiet
@@ -141,10 +141,11 @@ Options:
       --analyze                  Analyze only, no optimization
       --offline                  Offline mode (no API calls)
       --check <CAT>              Check specific categories
-      --no-suggest               Disable auto-suggestions
-  -i, --interactive              Full-screen interactive TUI
-      --config-init              Create default config file and exit
+      --no-suggest               Disable auto-suggestions for vague prompts
+  -i, --interactive              Launch full-screen interactive TUI mode
+  -e, --editor                   Open editor for multi-line input
       --skip-connectivity-check  Skip connectivity check
+      --config-init              Create default config file and exit
   -v, --verbose                  Verbose output
   -h, --help                     Print help
   -V, --version                  Print version
@@ -198,6 +199,28 @@ copt -f prompt.txt -i
 | `c` | Copy to clipboard |
 | `s` / `e` | Save & open in editor |
 | `?` | Help |
+
+---
+
+## Prompt Storage
+
+Optimized prompts are auto-saved to `~/.copt/prompts/YYYY-MM-DD/` with descriptive filenames:
+
+```
+~/.copt/prompts/
+└── 2026-02-15/
+    ├── dashboard-analytics-api_143022_original.txt
+    ├── dashboard-analytics-api_143022_optimized.txt
+    └── dashboard-analytics-api_143022.json
+```
+
+Use `--output-dir <DIR>` to override, or `--no-save` to disable.
+
+---
+
+## Raycast Integration
+
+Optimize prompts directly from your clipboard. See [scripts/raycast/README.md](scripts/raycast/README.md) for setup.
 
 ---
 
