@@ -70,9 +70,9 @@ All optimizer transforms now use `LazyLock<Regex>`.
 
 Added `Provider::as_str()` method.
 
-### 5. Inconsistent `Issue` field types between analyzer and rules
+### 5. Inconsistent `Issue` field types between analyzer and rules — ✅ DONE (v0.3.0)
 
-The analyzer's `Issue` uses `category: String` while the rules module's `Issue` uses `category: Category` (an enum). If the rules module is kept, these should be unified. If removed (recommended), this inconsistency goes away.
+No longer applicable — `src/rules/mod.rs` was removed entirely.
 
 ### 6. `handle_output` rebuilds Model from scratch
 
@@ -146,16 +146,16 @@ The `Enhancement` struct and `get_applicable_enhancements()` function in `src/op
 
 ## Quick Wins
 
-1. **Remove 6 unused Cargo dependencies** (`tiktoken-rs`, `dotenvy`, `textwrap`, `unicode-segmentation`, `directories`, `futures`). This will noticeably reduce compile times. Estimated: 10 minutes of work, immediate build speed improvement.
+1. ✅ **Remove 6 unused Cargo dependencies** — DONE (v0.3.0). Removed `tiktoken-rs`, `dotenvy`, `textwrap`, `unicode-segmentation`, `directories`, `futures`.
 
-2. **Wire `resolve_model_id()` into `main.rs`**. One line change: `let model = cli::resolve_model_id(&cli.model);` before passing to LLM clients. Users can then type `copt -m sonnet` instead of the full ARN. Estimated: 5 minutes.
+2. ✅ **Wire `resolve_model_id()` into `main.rs`** — DONE (v0.3.0). Users can type `copt -m sonnet`.
 
-3. **Fix STY004 double-replacement bug** in `transform_overtriggering_language()`. The regex replacements for "MUST" → "should" and "ALWAYS" → "should" can stack. Process the string once with a single pass or use a priority system. Estimated: 15 minutes.
+3. ✅ **Fix STY004 double-replacement bug** — DONE (v0.3.0). Static transforms now apply in fixed priority order.
 
-4. **Remove blanket `#![allow(dead_code)]`** from all files and either delete dead code or add targeted `#[allow(dead_code)]` with a comment explaining why it's kept. This prevents future dead code accumulation. Estimated: 30 minutes.
+4. ✅ **Remove blanket `#![allow(dead_code)]`** — DONE (v0.3.0). All blanket annotations removed, targeted allows added where needed.
 
-5. **Delete `src/rules/mod.rs`** and remove `mod rules;` from `main.rs`. It's a complete duplicate of functionality in `src/analyzer/mod.rs` and adds confusion. Estimated: 2 minutes.
+5. ✅ **Delete `src/rules/mod.rs`** — DONE (v0.3.0). Module and `mod rules;` declaration removed.
 
-6. **Extract `build_editor_command` to shared utility**. Currently duplicated between `main.rs:354` and `tui/update.rs:290`. Estimated: 10 minutes.
+6. ✅ **Extract `build_editor_command` to shared utility** — DONE (v0.3.0). Now in `src/utils/editor.rs`.
 
-7. **Add `--editor` to the help examples**. The `-e` / `--editor` flag for multi-line input is a nice feature but isn't mentioned in the README Quick Start or Common Examples sections. Estimated: 5 minutes.
+7. ✅ **Add `--editor` to the help output** — DONE (v0.3.1). `-e, --editor` visible in `--help` and README CLI reference.
