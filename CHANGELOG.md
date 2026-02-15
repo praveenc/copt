@@ -5,6 +5,29 @@ All notable changes to `copt` (Claude Prompt Optimizer) will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-02-15
+
+### Added
+
+- **Bedrock API Key authentication**: New `BedrockApiKeyClient` uses Bearer token auth via the Converse API — no AWS CLI, IAM roles, or credential chain setup needed
+- **API key resolution**: `--bedrock-api-key` CLI flag → `AWS_BEARER_TOKEN_BEDROCK` env var → `api_key` in config.toml → SigV4 fallback
+- **Improved `--config-init`**: Generates a commented config template with clear API key guidance
+
+### Changed
+
+- **Connectivity check**: Now shows auth method ("API key" vs "AWS credentials") in status output
+- **Error messages**: Credential failures now suggest Bedrock API keys as the simplest fix
+- **Config simplification**: Removed `api_key_env` from `BedrockConfig` (confusing indirection)
+
+### Technical
+
+- `BedrockApiKeyClient` uses `reqwest` + Converse API (`/model/{id}/converse`) with `Authorization: Bearer` header
+- Shared `get_bedrock_model_id()` extracted from `BedrockClient` method for both clients
+- AWS SDK deps retained for backward-compatible SigV4 fallback
+- Test suite: 97 → 101 (4 new: client creation, provider name, request/response serialization)
+
+---
+
 ## [0.3.1] - 2026-02-15
 
 ### Added
@@ -317,7 +340,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/praveenc/copt/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/praveenc/copt/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/praveenc/copt/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/praveenc/copt/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/praveenc/copt/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/praveenc/copt/compare/v0.2.2...v0.2.3
