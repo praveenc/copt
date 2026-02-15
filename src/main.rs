@@ -294,18 +294,9 @@ fn apply_config_defaults(cli: &mut Cli, matches: &clap::ArgMatches) {
 
     // Apply Bedrock API key from config if not set via CLI or env var
     if cli.bedrock_api_key.is_none() {
-        // Try the env var name from config (in case user customized it)
-        if let Ok(key) = std::env::var(&config.bedrock.api_key_env) {
+        if let Some(ref key) = config.bedrock.api_key {
             if !key.is_empty() {
-                cli.bedrock_api_key = Some(key);
-            }
-        }
-        // Fall back to direct config value
-        if cli.bedrock_api_key.is_none() {
-            if let Some(ref key) = config.bedrock.api_key {
-                if !key.is_empty() {
-                    cli.bedrock_api_key = Some(key.clone());
-                }
+                cli.bedrock_api_key = Some(key.clone());
             }
         }
     }
