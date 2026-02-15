@@ -52,16 +52,17 @@ Successful checks now cached with 5-minute TTL in `/tmp/copt_connectivity_<provi
 
 Default save location changed from `./copt-output/` to `~/.copt/prompts/YYYY-MM-DD/`. Date-bucketed, centralized. `--output-dir` still works for overrides.
 
-### 10. Bedrock API Key authentication
+### 10. Bedrock API Key authentication — ✅ DONE (v0.3.2)
 
 Replace the current AWS SDK SigV4 credential chain (requires AWS CLI, `aws configure`, IAM roles, `AWS_PROFILE`, etc.) with Bedrock API Key Bearer token authentication. Long-term keys support up to 1-year expiry — effectively "set and forget" for a developer CLI tool.
 
-Key changes:
-- Replace `aws-sdk-bedrockruntime` + `aws-config` with direct `reqwest` HTTP calls using `Authorization: Bearer <key>` header
-- Read key from `AWS_BEARER_TOKEN_BEDROCK` env var, `--bedrock-api-key` CLI flag, or `~/.config/copt/config.toml`
-- Drop 3 heavy AWS SDK crates → faster compile times, smaller binary
-- Fall back to existing SigV4 credential chain when no API key is present (backward compatible)
-- Update config file, Raycast script, README, error messages
+Changes:
+- `BedrockApiKeyClient` using `reqwest` + Converse API with `Authorization: Bearer <key>` header
+- Key resolution: `--bedrock-api-key` CLI flag → `AWS_BEARER_TOKEN_BEDROCK` env var → `api_key` in config.toml → SigV4 fallback
+- Connectivity check shows auth method ("API key" vs "AWS credentials")
+- `--config-init` generates commented template with API key guidance
+- Error messages suggest API keys as simplest fix for credential issues
+- AWS SDK deps kept for backward-compatible SigV4 fallback
 
 ## Code Efficiency & Robustness
 
