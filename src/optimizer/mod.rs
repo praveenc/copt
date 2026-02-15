@@ -13,12 +13,21 @@ use crate::llm::{build_optimization_message, LlmClient, OPTIMIZER_SYSTEM_PROMPT}
 /// Static optimization using rule-based transformations
 ///
 /// This function applies known transformations without requiring API calls.
-/// Useful for offline mode or quick fixes.
+/// Useful for offline mode or quick fixes. Also appends applicable
+/// enhancement hints based on prompt content analysis.
 pub fn optimize_static(prompt: &str, issues: &[Issue]) -> Result<String> {
     let mut result = prompt.to_string();
 
     for issue in issues {
         result = apply_static_transformation(&result, issue);
+    }
+
+    // Append applicable enhancement hints
+    let enhancements = get_applicable_enhancements(&result);
+    if !enhancements.is_empty() {
+        for enhancement in &enhancements {
+            result.push_str(enhancement);
+        }
     }
 
     Ok(result)
@@ -165,11 +174,27 @@ pub async fn optimize_with_llm(
     // First apply static transformations for quick wins
     let partially_optimized = optimize_static(prompt, issues)?;
 
-    // Build the user message with detected issues and prompt type
+    // Build the user message with detected issues, enhancements, and prompt type
     let issues_summary = format_issues_for_llm(issues);
+    let enhancements = get_applicable_enhancements(&partially_optimized);
+    let enhancements_summary = if enhancements.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\n\nSuggested enhancements to incorporate:\n{}",
+            enhancements
+                .iter()
+                .map(|e| format!("- {}", e.trim()))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    };
     let prompt_type_str = prompt_type_to_str(prompt_type);
-    let user_message =
-        build_optimization_message(&partially_optimized, &issues_summary, prompt_type_str);
+    let user_message = build_optimization_message(
+        &partially_optimized,
+        &format!("{}{}", issues_summary, enhancements_summary),
+        prompt_type_str,
+    );
 
     // Call the LLM
     let optimized = client
@@ -248,17 +273,14 @@ fn prompt_type_to_str(prompt_type: PromptType) -> &'static str {
 }
 
 /// Enhancement suggestions that can be appended to prompts based on detected patterns
-// TODO: Wire into optimization pipeline (Phase 3)
-#[allow(dead_code)]
 pub struct Enhancement {
+    #[allow(dead_code)] // Useful for debugging/logging, not read in current pipeline
     pub id: &'static str,
     pub condition: fn(&str) -> bool,
     pub template: &'static str,
 }
 
 /// Get applicable enhancements for a prompt
-// TODO: Wire into optimization pipeline (Phase 3)
-#[allow(dead_code)]
 pub fn get_applicable_enhancements(prompt: &str) -> Vec<&'static str> {
     let enhancements: Vec<Enhancement> = vec![
         Enhancement {
