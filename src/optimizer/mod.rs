@@ -3,8 +3,6 @@
 //! This module provides both static (rule-based) and LLM-powered
 //! optimization of prompts for Claude 4.5 models.
 
-#![allow(dead_code)]
-
 use anyhow::Result;
 
 use crate::analyzer::{Issue, PromptType, Severity};
@@ -246,6 +244,8 @@ fn prompt_type_to_str(prompt_type: PromptType) -> &'static str {
 }
 
 /// Enhancement suggestions that can be appended to prompts based on detected patterns
+// TODO: Wire into optimization pipeline (Phase 3)
+#[allow(dead_code)]
 pub struct Enhancement {
     pub id: &'static str,
     pub condition: fn(&str) -> bool,
@@ -253,6 +253,8 @@ pub struct Enhancement {
 }
 
 /// Get applicable enhancements for a prompt
+// TODO: Wire into optimization pipeline (Phase 3)
+#[allow(dead_code)]
 pub fn get_applicable_enhancements(prompt: &str) -> Vec<&'static str> {
     let enhancements: Vec<Enhancement> = vec![
         Enhancement {

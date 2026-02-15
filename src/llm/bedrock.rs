@@ -156,6 +156,7 @@ impl BedrockClient {
     }
 
     /// Get the configured region
+    #[allow(dead_code)]
     pub fn region(&self) -> &str {
         &self.region
     }

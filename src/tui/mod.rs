@@ -49,26 +49,13 @@ pub mod legacy_icons {
     pub const FILE: &str = "📄";
 }
 
-// Note: main.rs imports directly from submodules (tui::model::*, tui::app::run_interactive)
-
-// ==============================================================
-// Legacy modules and functions for backward compatibility
-// These will be removed once main.rs is fully migrated
-// ==============================================================
-
-// Keep legacy modules that are still used by main.rs
-// - renderer: start_optimizing_spinner, stop_optimizing_spinner
+// Legacy modules still used by main.rs:
+// - renderer: start_optimizing_spinner, stop_optimizing_spinner, print_optimized_prompt
 // - diff: print_diff
 // - stats: print_save_success
 pub mod diff;
 pub mod renderer;
 pub mod stats;
-
-// Note: Legacy modules are still used by main.rs for:
-// - tui::renderer::start_optimizing_spinner / stop_optimizing_spinner
-// - tui::renderer::print_optimized_prompt
-// - tui::diff::print_diff
-// - tui::stats::print_save_success
 
 /// Box-drawing characters for terminal UI
 #[allow(dead_code)]
@@ -91,178 +78,12 @@ pub fn terminal_width() -> usize {
     console::Term::stdout().size().1 as usize
 }
 
-/// Truncate a string to fit within a width, adding ellipsis if needed
-pub fn truncate(s: &str, max_width: usize) -> String {
-    if s.len() <= max_width {
-        s.to_string()
-    } else if max_width > 3 {
-        format!("{}...", &s[..max_width - 3])
-    } else {
-        s[..max_width].to_string()
-    }
-}
-
-/// Pad a string to a fixed width
-#[allow(dead_code)]
-pub fn pad_right(s: &str, width: usize) -> String {
-    if s.len() >= width {
-        s.to_string()
-    } else {
-        format!("{}{}", s, " ".repeat(width - s.len()))
-    }
-}
-
-/// Center a string within a width
-#[allow(dead_code)]
-pub fn center(s: &str, width: usize) -> String {
-    if s.len() >= width {
-        s.to_string()
-    } else {
-        let padding = (width - s.len()) / 2;
-        format!(
-            "{}{}{}",
-            " ".repeat(padding),
-            s,
-            " ".repeat(width - s.len() - padding)
-        )
-    }
-}
-
-/// Draw a horizontal line
-#[allow(dead_code)]
-pub fn draw_line(width: usize) -> String {
-    chars::HORIZONTAL.repeat(width)
-}
-
-/// Draw a box top border
-#[allow(dead_code)]
-pub fn draw_box_top(width: usize, title: Option<&str>) -> String {
-    match title {
-        Some(t) => {
-            let title_part = format!(" {} ", t);
-            let remaining = width.saturating_sub(title_part.len() + 2);
-            let left = remaining / 2;
-            let right = remaining - left;
-            format!(
-                "{}{}{}{}{}",
-                chars::TOP_LEFT,
-                chars::HORIZONTAL.repeat(left),
-                title_part,
-                chars::HORIZONTAL.repeat(right),
-                chars::TOP_RIGHT
-            )
-        }
-        None => {
-            format!(
-                "{}{}{}",
-                chars::TOP_LEFT,
-                chars::HORIZONTAL.repeat(width),
-                chars::TOP_RIGHT
-            )
-        }
-    }
-}
-
-/// Draw a box bottom border
-#[allow(dead_code)]
-pub fn draw_box_bottom(width: usize) -> String {
-    format!(
-        "{}{}{}",
-        chars::BOTTOM_LEFT,
-        chars::HORIZONTAL.repeat(width),
-        chars::BOTTOM_RIGHT
-    )
-}
-
-/// Draw a box line (content between borders)
-#[allow(dead_code)]
-pub fn draw_box_line(content: &str, width: usize) -> String {
-    let content_width = width.saturating_sub(2);
-    let truncated = truncate(content, content_width);
-    format!(
-        "{} {}{} {}",
-        chars::VERTICAL,
-        truncated,
-        " ".repeat(content_width.saturating_sub(truncated.len())),
-        chars::VERTICAL
-    )
-}
-
-/// Color utilities for consistent theming
-#[allow(dead_code)]
-pub mod colors {
-    use colored::ColoredString;
-    use colored::Colorize;
-
-    pub fn primary(s: &str) -> ColoredString {
-        s.cyan().bold()
-    }
-
-    pub fn secondary(s: &str) -> ColoredString {
-        s.bright_blue()
-    }
-
-    pub fn success(s: &str) -> ColoredString {
-        s.green().bold()
-    }
-
-    pub fn warning(s: &str) -> ColoredString {
-        s.yellow()
-    }
-
-    pub fn error(s: &str) -> ColoredString {
-        s.red().bold()
-    }
-
-    pub fn info(s: &str) -> ColoredString {
-        s.blue()
-    }
-
-    pub fn muted(s: &str) -> ColoredString {
-        s.bright_black()
-    }
-
-    pub fn highlight(s: &str) -> ColoredString {
-        s.magenta().bold()
-    }
-
-    pub fn value(s: &str) -> ColoredString {
-        s.white().bold()
-    }
-
-    pub fn label(s: &str) -> ColoredString {
-        s.bright_white()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_truncate() {
-        assert_eq!(truncate("hello", 10), "hello");
-        assert_eq!(truncate("hello world", 8), "hello...");
-        assert_eq!(truncate("hi", 2), "hi");
-    }
-
-    #[test]
-    fn test_pad_right() {
-        assert_eq!(pad_right("hello", 10), "hello     ");
-        assert_eq!(pad_right("hello", 3), "hello");
-    }
-
-    #[test]
-    fn test_center() {
-        assert_eq!(center("hi", 6), "  hi  ");
-        assert_eq!(center("hello", 3), "hello");
-    }
-
-    #[test]
-    fn test_draw_box_top() {
-        let top = draw_box_top(20, Some("Test"));
-        assert!(top.starts_with(chars::TOP_LEFT));
-        assert!(top.ends_with(chars::TOP_RIGHT));
-        assert!(top.contains("Test"));
+    fn test_terminal_width() {
+        assert!(terminal_width() > 0);
     }
 }

@@ -161,6 +161,7 @@ pub struct Issue {
 }
 
 /// All available rule categories (used when explicit category check is requested)
+// TODO: Consider using this in analyze() instead of hardcoded match arms
 #[allow(dead_code)]
 pub const CATEGORIES: &[&str] = &[
     "explicitness",
