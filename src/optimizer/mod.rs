@@ -3,9 +3,9 @@
 //! This module provides both static (rule-based) and LLM-powered
 //! optimization of prompts for Claude 4.5 models.
 
-#![allow(dead_code)]
-
 use anyhow::Result;
+use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::analyzer::{Issue, PromptType, Severity};
 use crate::llm::{build_optimization_message, LlmClient, OPTIMIZER_SYSTEM_PROMPT};
@@ -13,27 +13,47 @@ use crate::llm::{build_optimization_message, LlmClient, OPTIMIZER_SYSTEM_PROMPT}
 /// Static optimization using rule-based transformations
 ///
 /// This function applies known transformations without requiring API calls.
-/// Useful for offline mode or quick fixes.
+/// Useful for offline mode or quick fixes. Also appends applicable
+/// enhancement hints based on prompt content analysis.
 pub fn optimize_static(prompt: &str, issues: &[Issue]) -> Result<String> {
     let mut result = prompt.to_string();
 
-    for issue in issues {
-        result = apply_static_transformation(&result, issue);
+    // Apply transforms in a fixed priority order to avoid ordering bugs.
+    // STY004 (overtriggering) must run before STY002 (emphasis) because
+    // STY002 lowercases "CRITICAL" → "Critical", making STY004's pattern miss.
+    let transform_order = ["STY004", "STY002", "STY003", "STY001", "FMT002", "EXP003"];
+
+    for rule_id in &transform_order {
+        if issues.iter().any(|i| i.id == *rule_id) {
+            result = apply_static_transformation(&result, rule_id);
+        }
+    }
+
+    // Append applicable enhancement hints
+    let enhancements = get_applicable_enhancements(&result);
+    if !enhancements.is_empty() {
+        for enhancement in &enhancements {
+            result.push_str(enhancement);
+        }
     }
 
     Ok(result)
 }
 
-/// Apply a single static transformation based on an issue
-fn apply_static_transformation(prompt: &str, issue: &Issue) -> String {
-    match issue.id.as_str() {
+/// Apply a single static transformation based on a rule ID
+fn apply_static_transformation(prompt: &str, rule_id: &str) -> String {
+    match rule_id {
         // Explicitness transformations
         "EXP003" => transform_indirect_commands(prompt),
 
         // Style transformations
+        "STY001" => transform_negative_instructions(prompt),
         "STY002" => transform_aggressive_emphasis(prompt),
         "STY003" => transform_think_word(prompt),
         "STY004" => transform_overtriggering_language(prompt),
+
+        // Formatting transformations
+        "FMT002" => transform_negative_format(prompt),
 
         // For other rules, return unchanged (require LLM for complex rewrites)
         _ => prompt.to_string(),
@@ -42,23 +62,24 @@ fn apply_static_transformation(prompt: &str, issue: &Issue) -> String {
 
 /// Transform indirect commands like "Can you..." to direct commands
 fn transform_indirect_commands(prompt: &str) -> String {
-    use regex::Regex;
-
-    let patterns = [
-        (r"(?i)^can you\s+", ""),
-        (r"(?i)^could you\s+", ""),
-        (r"(?i)^would you mind\s+", ""),
-        (r"(?i)^is it possible to\s+", ""),
-        (r"(?i)^i was wondering if you could\s+", ""),
-        (r"(?i)^please\s+", ""),
-    ];
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (Regex::new(r"(?i)^can you\s+").unwrap(), ""),
+            (Regex::new(r"(?i)^could you\s+").unwrap(), ""),
+            (Regex::new(r"(?i)^would you mind\s+").unwrap(), ""),
+            (Regex::new(r"(?i)^is it possible to\s+").unwrap(), ""),
+            (
+                Regex::new(r"(?i)^i was wondering if you could\s+").unwrap(),
+                "",
+            ),
+            (Regex::new(r"(?i)^please\s+").unwrap(), ""),
+        ]
+    });
 
     let mut result = prompt.to_string();
 
-    for (pattern, replacement) in patterns {
-        if let Ok(re) = Regex::new(pattern) {
-            result = re.replace(&result, replacement).to_string();
-        }
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace(&result, *replacement).to_string();
     }
 
     // Capitalize first letter if needed
@@ -71,9 +92,95 @@ fn transform_indirect_commands(prompt: &str) -> String {
     result
 }
 
+/// Transform negative instructions to positive guidance
+///
+/// "Don't use global variables" → "Use local variables or dependency injection instead"
+/// Only transforms common patterns where a positive alternative is clear.
+fn transform_negative_instructions(prompt: &str) -> String {
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (
+                Regex::new(
+                    r"(?im)^(\s*)(?:don't|do not)\s+use\s+global\s+(?:variables?|state)\b[.]?",
+                )
+                .unwrap(),
+                "${1}Use local variables or dependency injection instead of global state.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+use\s+var\b[.]?").unwrap(),
+                "${1}Use const or let instead of var.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+use\s+any\b[.]?").unwrap(),
+                "${1}Use specific types instead of any.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+hardcode\b[.]?").unwrap(),
+                "${1}Use configuration or constants instead of hardcoded values.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+repeat\s+(?:yourself|code)\b[.]?")
+                    .unwrap(),
+                "${1}Extract shared logic into reusable functions.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+ignore\s+errors?\b[.]?").unwrap(),
+                "${1}Handle all errors explicitly with appropriate error types.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)never\s+use\s+unwrap\b[.]?").unwrap(),
+                "${1}Use proper error handling (? operator or match) instead of unwrap.",
+            ),
+        ]
+    });
+
+    let mut result = prompt.to_string();
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace_all(&result, *replacement).to_string();
+    }
+    result
+}
+
+/// Transform negative format instructions to positive alternatives
+///
+/// "no markdown" → "write in flowing prose paragraphs"
+/// "don't use bullet points" → "use flowing prose paragraphs"
+fn transform_negative_format(prompt: &str) -> String {
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (
+                Regex::new(r"(?i)\b(?:no|don't use|do not use|avoid)\s+markdown\b").unwrap(),
+                "write in plain text without markdown formatting",
+            ),
+            (
+                Regex::new(
+                    r"(?i)\b(?:no|don't use|do not use|avoid)\s+bullet\s*(?:points?|lists?)\b",
+                )
+                .unwrap(),
+                "use flowing prose paragraphs",
+            ),
+            (
+                Regex::new(r"(?i)\b(?:no|don't use|do not use|avoid)\s+(?:bold|italic)\b").unwrap(),
+                "use plain text emphasis through word choice",
+            ),
+            (
+                Regex::new(r"(?i)\b(?:no|don't use|do not use|avoid)\s+(?:lists?|formatting)\b")
+                    .unwrap(),
+                "write in continuous prose",
+            ),
+        ]
+    });
+
+    let mut result = prompt.to_string();
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace_all(&result, *replacement).to_string();
+    }
+    result
+}
+
 /// Transform aggressive ALL CAPS emphasis to normal case
 fn transform_aggressive_emphasis(prompt: &str) -> String {
-    use regex::Regex;
+    static CAPS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b([A-Z]{2,})\b").unwrap());
 
     // Match ALL CAPS words that aren't common acronyms
     let acronyms = [
@@ -81,44 +188,47 @@ fn transform_aggressive_emphasis(prompt: &str) -> String {
         "AWS", "GCP", "ID",
     ];
 
-    let re = Regex::new(r"\b([A-Z]{2,})\b").unwrap();
-
-    re.replace_all(prompt, |caps: &regex::Captures| {
-        let word = &caps[1];
-        if acronyms.contains(&word) {
-            word.to_string()
-        } else {
-            // Convert to lowercase, capitalize first letter
-            let lower = word.to_lowercase();
-            if let Some(first) = lower.chars().next() {
-                first.to_uppercase().to_string() + &lower[first.len_utf8()..]
+    CAPS_RE
+        .replace_all(prompt, |caps: &regex::Captures| {
+            let word = &caps[1];
+            if acronyms.contains(&word) {
+                word.to_string()
             } else {
-                lower
+                // Convert to lowercase, capitalize first letter
+                let lower = word.to_lowercase();
+                if let Some(first) = lower.chars().next() {
+                    first.to_uppercase().to_string() + &lower[first.len_utf8()..]
+                } else {
+                    lower
+                }
             }
-        }
-    })
-    .to_string()
+        })
+        .to_string()
 }
 
 /// Transform "think" and variants to Claude 4.5 friendly alternatives
 fn transform_think_word(prompt: &str) -> String {
-    use regex::Regex;
-
-    let replacements = [
-        (r"(?i)\bthink about\b", "consider"),
-        (r"(?i)\bthink through\b", "work through"),
-        (r"(?i)\bI think\b", "I believe"),
-        (r"(?i)\bthinking about\b", "considering"),
-        (r"(?i)\bthinking\b", "evaluating"),
-        (r"(?i)\bthink\b", "consider"),
-    ];
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (Regex::new(r"(?i)\bthink about\b").unwrap(), "consider"),
+            (
+                Regex::new(r"(?i)\bthink through\b").unwrap(),
+                "work through",
+            ),
+            (Regex::new(r"(?i)\bI think\b").unwrap(), "I believe"),
+            (
+                Regex::new(r"(?i)\bthinking about\b").unwrap(),
+                "considering",
+            ),
+            (Regex::new(r"(?i)\bthinking\b").unwrap(), "evaluating"),
+            (Regex::new(r"(?i)\bthink\b").unwrap(), "consider"),
+        ]
+    });
 
     let mut result = prompt.to_string();
 
-    for (pattern, replacement) in replacements {
-        if let Ok(re) = Regex::new(pattern) {
-            result = re.replace_all(&result, replacement).to_string();
-        }
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace_all(&result, *replacement).to_string();
     }
 
     result
@@ -126,27 +236,25 @@ fn transform_think_word(prompt: &str) -> String {
 
 /// Tone down overtriggering language
 fn transform_overtriggering_language(prompt: &str) -> String {
-    use regex::Regex;
-
-    let replacements = [
-        (r"(?i)\bCRITICAL:\s*", ""),
-        (r"(?i)\bIMPORTANT:\s*", ""),
-        (r"(?i)\bYou MUST\b", "You should"),
-        (r"(?i)\bMUST ALWAYS\b", "should"),
-        (r"(?i)\bALWAYS MUST\b", "should"),
-        (r"(?i)\bNEVER EVER\b", "avoid"),
-        (r"(?i)!{2,}", "!"),
-        (r"(?i)\bMANDATORY\b", "required"),
-        (r"(?i)\bESSENTIAL\b", "important"),
-        (r"(?i)\bCRUCIAL\b", "important"),
-    ];
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (Regex::new(r"(?i)\bCRITICAL:\s*").unwrap(), ""),
+            (Regex::new(r"(?i)\bIMPORTANT:\s*").unwrap(), ""),
+            (Regex::new(r"(?i)\bYou MUST\b").unwrap(), "You should"),
+            (Regex::new(r"(?i)\bMUST ALWAYS\b").unwrap(), "should"),
+            (Regex::new(r"(?i)\bALWAYS MUST\b").unwrap(), "should"),
+            (Regex::new(r"(?i)\bNEVER EVER\b").unwrap(), "avoid"),
+            (Regex::new(r"(?i)!{2,}").unwrap(), "!"),
+            (Regex::new(r"(?i)\bMANDATORY\b").unwrap(), "required"),
+            (Regex::new(r"(?i)\bESSENTIAL\b").unwrap(), "important"),
+            (Regex::new(r"(?i)\bCRUCIAL\b").unwrap(), "important"),
+        ]
+    });
 
     let mut result = prompt.to_string();
 
-    for (pattern, replacement) in replacements {
-        if let Ok(re) = Regex::new(pattern) {
-            result = re.replace_all(&result, replacement).to_string();
-        }
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace_all(&result, *replacement).to_string();
     }
 
     result
@@ -163,11 +271,27 @@ pub async fn optimize_with_llm(
     // First apply static transformations for quick wins
     let partially_optimized = optimize_static(prompt, issues)?;
 
-    // Build the user message with detected issues and prompt type
+    // Build the user message with detected issues, enhancements, and prompt type
     let issues_summary = format_issues_for_llm(issues);
+    let enhancements = get_applicable_enhancements(&partially_optimized);
+    let enhancements_summary = if enhancements.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\n\nSuggested enhancements to incorporate:\n{}",
+            enhancements
+                .iter()
+                .map(|e| format!("- {}", e.trim()))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    };
     let prompt_type_str = prompt_type_to_str(prompt_type);
-    let user_message =
-        build_optimization_message(&partially_optimized, &issues_summary, prompt_type_str);
+    let user_message = build_optimization_message(
+        &partially_optimized,
+        &format!("{}{}", issues_summary, enhancements_summary),
+        prompt_type_str,
+    );
 
     // Call the LLM
     let optimized = client
@@ -247,6 +371,7 @@ fn prompt_type_to_str(prompt_type: PromptType) -> &'static str {
 
 /// Enhancement suggestions that can be appended to prompts based on detected patterns
 pub struct Enhancement {
+    #[allow(dead_code)] // Useful for debugging/logging, not read in current pipeline
     pub id: &'static str,
     pub condition: fn(&str) -> bool,
     pub template: &'static str,
@@ -340,6 +465,33 @@ mod tests {
         assert!(!result.contains("CRITICAL:"));
         assert!(result.contains("should"));
         assert!(!result.contains("!!!"));
+    }
+
+    #[test]
+    fn test_transform_negative_instructions() {
+        assert_eq!(
+            transform_negative_instructions("Don't use global variables"),
+            "Use local variables or dependency injection instead of global state."
+        );
+        assert_eq!(
+            transform_negative_instructions("do not hardcode"),
+            "Use configuration or constants instead of hardcoded values."
+        );
+        // Should not transform unrecognized patterns
+        assert_eq!(
+            transform_negative_instructions("Don't forget to test"),
+            "Don't forget to test"
+        );
+    }
+
+    #[test]
+    fn test_transform_negative_format() {
+        let result = transform_negative_format("no markdown please");
+        assert!(result.contains("plain text"));
+        assert!(!result.contains("no markdown"));
+
+        let result = transform_negative_format("don't use bullet points");
+        assert!(result.contains("flowing prose"));
     }
 
     #[test]

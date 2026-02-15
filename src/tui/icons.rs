@@ -2,8 +2,6 @@
 //!
 //! Detects terminal capabilities and provides appropriate icons.
 
-#![allow(dead_code)]
-
 use std::sync::OnceLock;
 
 /// Icon set with all available icons
@@ -21,7 +19,9 @@ pub struct IconSet {
     pub gear: &'static str,
     pub sparkles: &'static str,
     pub inbox: &'static str,
+    #[allow(dead_code)]
     pub clock: &'static str,
+    #[allow(dead_code)]
     pub arrow_right: &'static str,
     pub bullet: &'static str,
 }

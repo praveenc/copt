@@ -5,7 +5,7 @@
 
 use anyhow::{Context, Result};
 use chrono::Local;
-use clap::{Parser, ValueEnum};
+use clap::{CommandFactory, FromArgMatches, Parser, ValueEnum};
 use colored::Colorize;
 use std::io::{self, IsTerminal, Read};
 use std::path::PathBuf;
@@ -14,7 +14,6 @@ mod analyzer;
 mod cli;
 mod llm;
 mod optimizer;
-mod rules;
 mod tui;
 mod utils;
 
@@ -126,6 +125,10 @@ struct Cli {
     #[arg(long)]
     skip_connectivity_check: bool,
 
+    /// Create default config file and exit
+    #[arg(long = "config-init")]
+    config_init: bool,
+
     /// Verbose output
     #[arg(short, long)]
     verbose: bool,
@@ -135,6 +138,15 @@ struct Cli {
 enum Provider {
     Anthropic,
     Bedrock,
+}
+
+impl Provider {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Provider::Anthropic => "anthropic",
+            Provider::Bedrock => "bedrock",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -151,8 +163,33 @@ async fn main() -> Result<()> {
         tracing_subscriber::fmt::init();
     }
 
-    // Parse CLI arguments
-    let cli = Cli::parse();
+    // Parse CLI arguments and get matches for detecting explicit vs default values
+    let matches = Cli::command().get_matches();
+    let mut cli = Cli::from_arg_matches(&matches)?;
+
+    // Load config file and apply defaults for fields not explicitly set on CLI
+    apply_config_defaults(&mut cli, &matches);
+
+    // Handle --config-init: create default config and exit
+    if cli.config_init {
+        match cli::config::create_default_config() {
+            Ok(path) => {
+                println!(
+                    "{} Created default config at: {}",
+                    "✓".green(),
+                    path.display()
+                );
+                std::process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("{} Failed to create config: {}", "Error:".red().bold(), e);
+                std::process::exit(1);
+            }
+        }
+    }
+
+    // Resolve model aliases (e.g., "sonnet" → full Bedrock ARN)
+    cli.model = cli::resolve_model_id(&cli.model);
 
     // Interactive mode requires TTY
     if cli.interactive && !io::stdout().is_terminal() {
@@ -191,8 +228,104 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Check connectivity to the configured provider
+/// Apply config file defaults for CLI fields the user didn't explicitly set.
+/// CLI args always take precedence over config values.
+fn apply_config_defaults(cli: &mut Cli, matches: &clap::ArgMatches) {
+    use clap::parser::ValueSource;
+
+    let config = match cli::config::load_config() {
+        Ok(c) => c,
+        Err(e) => {
+            if cli.verbose {
+                eprintln!("{} Failed to load config: {}", "⚠".yellow(), e);
+            }
+            return;
+        }
+    };
+
+    // Validate config (warn but don't fail)
+    if let Err(e) = config.validate() {
+        if cli.verbose {
+            eprintln!("{} Invalid config: {}", "⚠".yellow(), e);
+        }
+        return;
+    }
+
+    // Apply provider from config if not explicitly set on CLI
+    if matches.value_source("provider") != Some(ValueSource::CommandLine) {
+        match config.default.provider.as_str() {
+            "anthropic" => cli.provider = Provider::Anthropic,
+            "bedrock" => cli.provider = Provider::Bedrock,
+            _ => {} // validated above, but be safe
+        }
+    }
+
+    // Apply model from config if not explicitly set on CLI
+    if matches.value_source("model") != Some(ValueSource::CommandLine)
+        && !config.default.model.is_empty()
+    {
+        cli.model = config.default.model.clone();
+    }
+
+    // Apply region from config if not explicitly set on CLI
+    if matches.value_source("region") != Some(ValueSource::CommandLine)
+        && !config.bedrock.region.is_empty()
+    {
+        cli.region = config.bedrock.region.clone();
+    }
+
+    // Apply output format from config if not explicitly set on CLI
+    if matches.value_source("format") != Some(ValueSource::CommandLine) {
+        match config.output.format.as_str() {
+            "json" => cli.format = OutputFormat::Json,
+            "quiet" => cli.format = OutputFormat::Quiet,
+            "pretty" => cli.format = OutputFormat::Pretty,
+            _ => {}
+        }
+    }
+
+    // Apply show_diff from config (only if not explicitly set — diff is a flag, default false)
+    if !cli.diff && config.output.show_diff {
+        cli.diff = true;
+    }
+
+    if cli.verbose {
+        let config_path = cli::config::get_config_path();
+        if config_path.exists() {
+            eprintln!(
+                "{} Loaded config from: {}",
+                "⚙".bright_black(),
+                config_path.display()
+            );
+        }
+    }
+}
+
+/// Check connectivity to the configured provider (with caching)
+///
+/// Caches successful connectivity checks for 5 minutes to avoid
+/// the 2-5s latency on every invocation.
 async fn check_provider_connectivity(cli: &Cli) -> Result<()> {
+    let cache_key = format!("{}_{}", cli.provider.as_str(), cli.region);
+    let cache_path = std::env::temp_dir().join(format!("copt_connectivity_{}.cache", cache_key));
+    let cache_ttl = std::time::Duration::from_secs(300); // 5 minutes
+
+    // Check cache
+    if let Ok(metadata) = std::fs::metadata(&cache_path) {
+        if let Ok(modified) = metadata.modified() {
+            if modified.elapsed().unwrap_or(cache_ttl) < cache_ttl {
+                if cli.verbose {
+                    eprintln!(
+                        "{} Connectivity cached ({})",
+                        "⚡".bright_black(),
+                        cli.provider.as_str()
+                    );
+                }
+                return Ok(());
+            }
+        }
+    }
+
     match cli.provider {
         Provider::Bedrock => {
             if !cli.quiet && cli.format != OutputFormat::Quiet {
@@ -214,6 +347,8 @@ async fn check_provider_connectivity(cli: &Cli) -> Result<()> {
                         println!("{}", "✓ Connected".green());
                         println!();
                     }
+                    // Cache successful check
+                    let _ = std::fs::write(&cache_path, "ok");
                     Ok(())
                 }
                 Err(e) => {
@@ -241,6 +376,8 @@ async fn check_provider_connectivity(cli: &Cli) -> Result<()> {
                 println!("{} Using Anthropic API (API key configured)", "✓".green());
                 println!();
             }
+            // Cache successful check
+            let _ = std::fs::write(&cache_path, "ok");
             Ok(())
         }
     }
@@ -352,31 +489,7 @@ async fn editor_input() -> Result<String> {
 /// GUI editors fork and return immediately unless given a --wait flag.
 /// We only add flags for editors we've verified support them.
 fn build_editor_command(editor: &str, file_path: &std::path::Path) -> (String, Vec<String>) {
-    let editor_lower = editor.to_lowercase();
-    let file_arg = file_path.to_string_lossy().to_string();
-
-    // Extract just the binary name for matching (handle full paths)
-    let editor_name = std::path::Path::new(editor)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(editor)
-        .to_lowercase();
-
-    // VSCode: `code --wait` (verified)
-    if editor_name.contains("code") || editor_lower.contains("visual studio code") {
-        return (editor.to_string(), vec!["--wait".to_string(), file_arg]);
-    }
-
-    // Zed: `zed --wait` or `/path/to/Zed.app/.../cli --wait` (verified)
-    if editor_name == "cli" && editor_lower.contains("zed") {
-        return (editor.to_string(), vec!["--wait".to_string(), file_arg]);
-    }
-    if editor_name.contains("zed") {
-        return (editor.to_string(), vec!["--wait".to_string(), file_arg]);
-    }
-
-    // Default: terminal editors (vim, nano, emacs, etc.) block by default
-    (editor.to_string(), vec![file_arg])
+    utils::editor::build_editor_command(editor, file_path, true)
 }
 
 /// Main optimization result structure
@@ -472,7 +585,7 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
             original_tokens: utils::count_tokens(prompt),
             optimized_tokens: utils::count_tokens(prompt),
             processing_time_ms: start_time.elapsed().as_millis() as u64,
-            provider: format!("{:?}", cli.provider).to_lowercase(),
+            provider: cli.provider.as_str().to_string(),
             model: cli.model.clone(),
             ..Default::default()
         };
@@ -548,7 +661,7 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
             .collect::<std::collections::HashSet<_>>()
             .len(),
         processing_time_ms: processing_time,
-        provider: format!("{:?}", cli.provider).to_lowercase(),
+        provider: cli.provider.as_str().to_string(),
         model: cli.model.clone(),
     };
 
@@ -764,7 +877,7 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
                         .collect::<std::collections::HashSet<_>>()
                         .len(),
                     processing_time_ms: processing_time,
-                    provider: format!("{:?}", cli.provider).to_lowercase(),
+                    provider: cli.provider.as_str().to_string(),
                     model: cli.model.clone(),
                 };
 

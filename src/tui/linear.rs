@@ -3,8 +3,6 @@
 //! Renders enhanced output that scrolls like traditional CLI output.
 //! Uses ratatui to render to a string buffer, then prints to stdout.
 
-#![allow(dead_code)]
-
 use std::io::{self, Write};
 
 use colored::Colorize;

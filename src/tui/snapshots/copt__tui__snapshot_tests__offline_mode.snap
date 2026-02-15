@@ -2,7 +2,7 @@
 source: src/tui/snapshot_tests.rs
 expression: output
 ---
-⚡  CLAUDE PROMPT OPTIMIZER v0.2.3 [OFFLINE MODE]                                
+⚡  CLAUDE PROMPT OPTIMIZER v0.3.0 [OFFLINE MODE]                                
 Static analysis only (no LLM calls)                                             
 📥  Input: test_prompt.txt (53 chars, 12 tokens)                                 
 ────────────────────────────────────────────────────────────────────────────────

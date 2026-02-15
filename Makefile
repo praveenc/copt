@@ -1,4 +1,4 @@
-.PHONY: build release test lint fmt fmt-check clean run ci ci-debug ci-release check
+.PHONY: build release test lint fmt fmt-check clean run ci ci-debug ci-release check ci-quiet
 
 build:
 	cargo build
@@ -35,3 +35,10 @@ ci: ci-debug
 
 # Local dev: auto-fix formatting, then lint and test
 check: fmt lint test
+
+# Quiet CI: concise output for agent/automated use (saves context window)
+ci-quiet:
+	@echo "=== fmt-check ===" && cargo fmt --check 2>&1 | tail -1
+	@echo "=== clippy ===" && cargo clippy -- -D warnings 2>&1 | tail -1
+	@echo "=== build ===" && cargo build 2>&1 | tail -1
+	@echo "=== test ===" && cargo test 2>&1 | grep "^test result"

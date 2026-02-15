@@ -4,8 +4,6 @@
 //! - Anthropic API (direct)
 //! - AWS Bedrock
 
-#![allow(dead_code)]
-
 mod anthropic;
 mod bedrock;
 
@@ -14,7 +12,6 @@ pub use bedrock::BedrockClient;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 
 /// Unified LLM client interface
 #[async_trait]
@@ -29,48 +26,8 @@ pub trait LlmClient: Send + Sync {
     ) -> Result<String>;
 
     /// Get the provider name
+    #[allow(dead_code)]
     fn provider_name(&self) -> &str;
-}
-
-/// A completion request (for future use with generic clients)
-#[derive(Debug, Clone, Serialize)]
-pub struct CompletionRequest {
-    pub model: String,
-    pub system: Option<String>,
-    pub messages: Vec<Message>,
-    pub max_tokens: u32,
-    pub temperature: Option<f32>,
-}
-
-/// A message in the conversation
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Message {
-    pub role: Role,
-    pub content: String,
-}
-
-/// Message role
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Role {
-    User,
-    Assistant,
-}
-
-/// A completion response
-#[derive(Debug, Clone, Deserialize)]
-pub struct CompletionResponse {
-    pub content: String,
-    pub model: String,
-    pub stop_reason: Option<String>,
-    pub usage: Option<Usage>,
-}
-
-/// Token usage statistics
-#[derive(Debug, Clone, Deserialize)]
-pub struct Usage {
-    pub input_tokens: u32,
-    pub output_tokens: u32,
 }
 
 /// The meta-prompt used to optimize prompts
