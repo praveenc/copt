@@ -21,7 +21,7 @@ pub fn optimize_static(prompt: &str, issues: &[Issue]) -> Result<String> {
     // Apply transforms in a fixed priority order to avoid ordering bugs.
     // STY004 (overtriggering) must run before STY002 (emphasis) because
     // STY002 lowercases "CRITICAL" → "Critical", making STY004's pattern miss.
-    let transform_order = ["STY004", "STY002", "STY003", "EXP003"];
+    let transform_order = ["STY004", "STY002", "STY003", "STY001", "FMT002", "EXP003"];
 
     for rule_id in &transform_order {
         if issues.iter().any(|i| i.id == *rule_id) {
@@ -47,9 +47,13 @@ fn apply_static_transformation(prompt: &str, rule_id: &str) -> String {
         "EXP003" => transform_indirect_commands(prompt),
 
         // Style transformations
+        "STY001" => transform_negative_instructions(prompt),
         "STY002" => transform_aggressive_emphasis(prompt),
         "STY003" => transform_think_word(prompt),
         "STY004" => transform_overtriggering_language(prompt),
+
+        // Formatting transformations
+        "FMT002" => transform_negative_format(prompt),
 
         // For other rules, return unchanged (require LLM for complex rewrites)
         _ => prompt.to_string(),
@@ -85,6 +89,92 @@ fn transform_indirect_commands(prompt: &str) -> String {
         }
     }
 
+    result
+}
+
+/// Transform negative instructions to positive guidance
+///
+/// "Don't use global variables" → "Use local variables or dependency injection instead"
+/// Only transforms common patterns where a positive alternative is clear.
+fn transform_negative_instructions(prompt: &str) -> String {
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (
+                Regex::new(
+                    r"(?im)^(\s*)(?:don't|do not)\s+use\s+global\s+(?:variables?|state)\b[.]?",
+                )
+                .unwrap(),
+                "${1}Use local variables or dependency injection instead of global state.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+use\s+var\b[.]?").unwrap(),
+                "${1}Use const or let instead of var.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+use\s+any\b[.]?").unwrap(),
+                "${1}Use specific types instead of any.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+hardcode\b[.]?").unwrap(),
+                "${1}Use configuration or constants instead of hardcoded values.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+repeat\s+(?:yourself|code)\b[.]?")
+                    .unwrap(),
+                "${1}Extract shared logic into reusable functions.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)(?:don't|do not)\s+ignore\s+errors?\b[.]?").unwrap(),
+                "${1}Handle all errors explicitly with appropriate error types.",
+            ),
+            (
+                Regex::new(r"(?im)^(\s*)never\s+use\s+unwrap\b[.]?").unwrap(),
+                "${1}Use proper error handling (? operator or match) instead of unwrap.",
+            ),
+        ]
+    });
+
+    let mut result = prompt.to_string();
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace_all(&result, *replacement).to_string();
+    }
+    result
+}
+
+/// Transform negative format instructions to positive alternatives
+///
+/// "no markdown" → "write in flowing prose paragraphs"
+/// "don't use bullet points" → "use flowing prose paragraphs"
+fn transform_negative_format(prompt: &str) -> String {
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (
+                Regex::new(r"(?i)\b(?:no|don't use|do not use|avoid)\s+markdown\b").unwrap(),
+                "write in plain text without markdown formatting",
+            ),
+            (
+                Regex::new(
+                    r"(?i)\b(?:no|don't use|do not use|avoid)\s+bullet\s*(?:points?|lists?)\b",
+                )
+                .unwrap(),
+                "use flowing prose paragraphs",
+            ),
+            (
+                Regex::new(r"(?i)\b(?:no|don't use|do not use|avoid)\s+(?:bold|italic)\b").unwrap(),
+                "use plain text emphasis through word choice",
+            ),
+            (
+                Regex::new(r"(?i)\b(?:no|don't use|do not use|avoid)\s+(?:lists?|formatting)\b")
+                    .unwrap(),
+                "write in continuous prose",
+            ),
+        ]
+    });
+
+    let mut result = prompt.to_string();
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace_all(&result, *replacement).to_string();
+    }
     result
 }
 
@@ -375,6 +465,33 @@ mod tests {
         assert!(!result.contains("CRITICAL:"));
         assert!(result.contains("should"));
         assert!(!result.contains("!!!"));
+    }
+
+    #[test]
+    fn test_transform_negative_instructions() {
+        assert_eq!(
+            transform_negative_instructions("Don't use global variables"),
+            "Use local variables or dependency injection instead of global state."
+        );
+        assert_eq!(
+            transform_negative_instructions("do not hardcode"),
+            "Use configuration or constants instead of hardcoded values."
+        );
+        // Should not transform unrecognized patterns
+        assert_eq!(
+            transform_negative_instructions("Don't forget to test"),
+            "Don't forget to test"
+        );
+    }
+
+    #[test]
+    fn test_transform_negative_format() {
+        let result = transform_negative_format("no markdown please");
+        assert!(result.contains("plain text"));
+        assert!(!result.contains("no markdown"));
+
+        let result = transform_negative_format("don't use bullet points");
+        assert!(result.contains("flowing prose"));
     }
 
     #[test]
