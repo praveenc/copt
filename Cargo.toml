@@ -26,7 +26,6 @@ ctrlc = "3.4"
 # Async Runtime & HTTP
 tokio = { version = "1.40", features = ["full"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "stream"] }
-futures = "0.3"
 async-trait = "0.1"
 
 # Serialization
@@ -36,10 +35,7 @@ toml = "0.8"
 
 # Text Processing
 regex = "1.10"
-unicode-segmentation = "1.11"
-tiktoken-rs = "0.6"
 similar = { version = "2.6", features = ["inline"] }
-textwrap = "0.16"
 
 # Date/Time
 chrono = "0.4"
@@ -53,9 +49,7 @@ aws-config = { version = "1.5", features = ["behavior-version-latest"] }
 aws-sdk-bedrockruntime = "1.50"
 aws-credential-types = "1.2"
 
-# Configuration
-directories = "5.0"
-dotenvy = "0.15"
+
 
 # Logging
 tracing = "0.1"
