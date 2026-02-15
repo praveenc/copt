@@ -6,7 +6,7 @@ COPT is a well-structured Rust CLI with a clear purpose and solid architecture (
 
 ## Feature Improvements
 
-### 1. Wire the config system into the application — Should Fix (Medium)
+### 1. Wire the config system into the application — ✅ DONE (v0.3.0)
 
 `src/cli/config.rs` defines a complete configuration system (provider defaults, rule disabling, severity overrides, API key storage) but it is never called from `main.rs`. The `load_config()` function exists, `Config` has validation, but zero integration. This means:
 - Users cannot disable noisy rules (e.g., STY003 "think" word) without `--check` flags every invocation
@@ -15,15 +15,15 @@ COPT is a well-structured Rust CLI with a clear purpose and solid architecture (
 
 Wire `load_config()` into `main()` and merge config values with CLI args (CLI takes precedence). This is the single highest-impact feature gap.
 
-### 2. Use the model alias system — Should Fix (Low)
+### 2. Use the model alias system — ✅ DONE (v0.3.0)
 
 `src/cli/mod.rs` defines `resolve_model_id()` and `MODEL_ALIASES` (e.g., "sonnet" → full Bedrock ARN) but these are never called. The `--model` flag in `main.rs` passes the raw string directly to the LLM client. Users must type `us.anthropic.claude-sonnet-4-5-20250929-v1:0` instead of just `sonnet`. Call `resolve_model_id()` on `cli.model` before passing it downstream.
 
-### 3. Use tiktoken-rs for accurate token counting — Should Fix (Medium)
+### 3. Use tiktoken-rs for accurate token counting — ✅ DONE (v0.3.0)
 
-`tiktoken-rs` is listed in `Cargo.toml` dependencies but never imported. The `count_tokens()` function in `src/utils/text.rs` uses a rough heuristic (`(word_count * 1.3 * 2 + char_count / 4) / 3`). Since you're already paying the compile-time cost of tiktoken-rs, actually use it — or remove the dependency. The inaccurate counts are displayed prominently in the TUI stats dashboard and saved to metadata JSON files, so they should be trustworthy.
+Decided to keep `chars/4` heuristic (display-only; providers handle tokenization). Removed `tiktoken-rs` dependency.
 
-### 4. Expand static optimization coverage — Nice to Have (Medium)
+### 4. Expand static optimization coverage — ✅ DONE (v0.3.0)
 
 The analyzer detects 25 rules but `optimize_static()` only handles 4 (EXP003, STY002, STY003, STY004). Several more rules have straightforward static transformations:
 - **STY001** (negative instructions): "Don't use X" → "Use Y instead" — regex-replaceable for common patterns
@@ -32,38 +32,43 @@ The analyzer detects 25 rules but `optimize_static()` only handles 4 (EXP003, ST
 
 This would make `--offline` mode substantially more useful.
 
-### 5. Add `--config init` subcommand — Nice to Have (Low)
+### 5. Add `--config init` subcommand — ✅ DONE (v0.3.0)
 
-`create_default_config()` exists in `config.rs` but is unreachable. Expose it as `copt --config init` or `copt config init` to generate `~/.config/copt/config.toml`. The function already writes a well-commented default config.
+Exposed as `copt --config-init`. Creates `~/.config/copt/config.toml` with commented defaults.
 
 ### 6. Streaming LLM output — Nice to Have (High)
 
 Both LLM clients wait for the full response before displaying anything. For large prompts, the optimization step can take 10+ seconds with no feedback beyond a spinner. The Bedrock client already uses `invoke_model` (not streaming) — switching to `invoke_model_with_response_stream` would let the TUI show incremental output. The Anthropic client could use SSE streaming similarly.
 
-### 7. Connectivity check is blocking UX — Should Fix (Low)
+### 7. Connectivity check is blocking UX — ✅ DONE (v0.3.0)
 
-`check_provider_connectivity()` in `main.rs` runs a full Bedrock `InvokeModel` call with a tiny prompt before every optimization. This adds 2-5 seconds of latency to every invocation. Consider:
-- Caching the last successful check with a TTL (e.g., 5 minutes) in a temp file
-- Making `--skip-connectivity-check` the default and only checking on first use or failure
-- Running the check concurrently with prompt analysis
+Successful checks now cached with 5-minute TTL in `/tmp/copt_connectivity_<provider>_<region>.cache`.
+
+### 8. Smart prompt naming — Should Fix (Medium)
+
+Saved prompts use generic `optimized_HHMMSS.txt` filenames which are hard to find later. Generate a short descriptive slug from the prompt content (e.g., `dashboard-analytics-api_143022.txt`) so users can identify prompts at a glance without opening each file.
+
+### 9. Standardize prompt storage to `~/.copt/prompts/` — Should Fix (Medium)
+
+Currently saves to `./copt-output/` relative to the working directory, scattering prompt files across the filesystem. Standardize to `~/.copt/prompts/YYYY-MM-DD/` as the default location — centralized, date-bucketed, and consistent with the Raycast integration. The `--output-dir` flag still works for overrides.
 
 ## Code Efficiency & Robustness
 
-### 1. Duplicated `build_editor_command` function
+### 1. Duplicated `build_editor_command` function — ✅ DONE (v0.3.0)
 
-`src/main.rs:354` and `src/tui/update.rs:290` contain identical implementations of `build_editor_command()`. Extract to a shared utility (e.g., `src/utils/editor.rs`) and call from both locations.
+Extracted to `src/utils/editor.rs`.
 
-### 2. Duplicated `Issue` type definitions
+### 2. Duplicated `Issue` type definitions — ✅ DONE (v0.3.0)
 
-`src/analyzer/mod.rs` defines `Issue` and `Severity` as the canonical types (re-exported from `main.rs` via `pub use analyzer::{Issue, Severity}`). But `src/rules/mod.rs` defines its own `Issue`, `Severity`, `Category`, and `patterns` module — a completely parallel type system that nothing uses. This is confusing for contributors and adds cognitive overhead.
+Removed `src/rules/mod.rs` entirely.
 
-### 3. Regex recompilation in optimizer transforms
+### 3. Regex recompilation in optimizer transforms — ✅ DONE (v0.3.0)
 
-`src/optimizer/mod.rs` functions `transform_indirect_commands()`, `transform_aggressive_emphasis()`, `transform_think_word()`, and `transform_overtriggering_language()` all compile regexes on every call via `Regex::new()` inside the function body. These should use `LazyLock<Regex>` (like `src/rules/mod.rs` already does for its patterns) to compile once.
+All optimizer transforms now use `LazyLock<Regex>`.
 
-### 4. `format!("{:?}", cli.provider).to_lowercase()` for provider name
+### 4. `format!("{:?}", cli.provider).to_lowercase()` for provider name — ✅ DONE (v0.3.0)
 
-`src/main.rs` uses `format!("{:?}", cli.provider).to_lowercase()` in multiple places (lines ~475, ~547, ~762) to get the provider string. This relies on the Debug representation of the enum. Add a `Provider::as_str()` method or implement `Display` instead.
+Added `Provider::as_str()` method.
 
 ### 5. Inconsistent `Issue` field types between analyzer and rules
 

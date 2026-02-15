@@ -9,7 +9,7 @@ Optimize prompts directly from your clipboard using Raycast.
 3. Wait a few seconds while Claude optimizes it via Bedrock
 4. Your clipboard is replaced with the optimized prompt — paste it anywhere
 
-Both the original and optimized prompts are saved to `~/.copt/prompts/YYYY-MM-DD/` for reference.
+Both the original and optimized prompts are auto-saved to `~/.copt/prompts/YYYY-MM-DD/` with descriptive filenames.
 
 ## Setup
 
@@ -44,21 +44,23 @@ COPT_BIN=/usr/local/bin/copt
 
 ## Prompt Storage
 
-Optimized prompts are saved to:
+Optimized prompts are auto-saved by `copt` to:
 
-```bash
+```
 ~/.copt/prompts/
 └── 2026-02-15/
-    ├── original_143022.txt
-    ├── optimized_143022.txt
-    ├── original_150510.txt
-    └── optimized_150510.txt
+    ├── dashboard-analytics-api_143022_original.txt
+    ├── dashboard-analytics-api_143022_optimized.txt
+    ├── dashboard-analytics-api_143022.json
+    ├── code-review-rust-pr_150510_original.txt
+    ├── code-review-rust-pr_150510_optimized.txt
+    └── code-review-rust-pr_150510.json
 ```
 
-Each optimization creates a timestamped pair (original + optimized) grouped by date.
+Each optimization creates a timestamped triplet (original + optimized + metadata) with a descriptive name derived from the prompt content, grouped by date.
 
 ## Tips
 
 - Assign a hotkey in Raycast for quick access (e.g., `⌥⇧O`)
 - Works with any text in your clipboard — prompt files, chat messages, system prompts
-- The script uses `--quiet --no-save` flags so copt only outputs the optimized text and skips its default save behavior
+- The script uses `--format json` to cleanly extract the optimized prompt — copt handles saving automatically to `~/.copt/prompts/`
