@@ -18,8 +18,15 @@ use crate::llm::{build_optimization_message, LlmClient, OPTIMIZER_SYSTEM_PROMPT}
 pub fn optimize_static(prompt: &str, issues: &[Issue]) -> Result<String> {
     let mut result = prompt.to_string();
 
-    for issue in issues {
-        result = apply_static_transformation(&result, issue);
+    // Apply transforms in a fixed priority order to avoid ordering bugs.
+    // STY004 (overtriggering) must run before STY002 (emphasis) because
+    // STY002 lowercases "CRITICAL" → "Critical", making STY004's pattern miss.
+    let transform_order = ["STY004", "STY002", "STY003", "EXP003"];
+
+    for rule_id in &transform_order {
+        if issues.iter().any(|i| i.id == *rule_id) {
+            result = apply_static_transformation(&result, rule_id);
+        }
     }
 
     // Append applicable enhancement hints
@@ -33,9 +40,9 @@ pub fn optimize_static(prompt: &str, issues: &[Issue]) -> Result<String> {
     Ok(result)
 }
 
-/// Apply a single static transformation based on an issue
-fn apply_static_transformation(prompt: &str, issue: &Issue) -> String {
-    match issue.id.as_str() {
+/// Apply a single static transformation based on a rule ID
+fn apply_static_transformation(prompt: &str, rule_id: &str) -> String {
+    match rule_id {
         // Explicitness transformations
         "EXP003" => transform_indirect_commands(prompt),
 
