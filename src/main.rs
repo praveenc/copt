@@ -279,8 +279,31 @@ fn apply_config_defaults(cli: &mut Cli, matches: &clap::ArgMatches) {
     }
 }
 
-/// Check connectivity to the configured provider
+/// Check connectivity to the configured provider (with caching)
+///
+/// Caches successful connectivity checks for 5 minutes to avoid
+/// the 2-5s latency on every invocation.
 async fn check_provider_connectivity(cli: &Cli) -> Result<()> {
+    let cache_key = format!("{}_{}", cli.provider.as_str(), cli.region);
+    let cache_path = std::env::temp_dir().join(format!("copt_connectivity_{}.cache", cache_key));
+    let cache_ttl = std::time::Duration::from_secs(300); // 5 minutes
+
+    // Check cache
+    if let Ok(metadata) = std::fs::metadata(&cache_path) {
+        if let Ok(modified) = metadata.modified() {
+            if modified.elapsed().unwrap_or(cache_ttl) < cache_ttl {
+                if cli.verbose {
+                    eprintln!(
+                        "{} Connectivity cached ({})",
+                        "⚡".bright_black(),
+                        cli.provider.as_str()
+                    );
+                }
+                return Ok(());
+            }
+        }
+    }
+
     match cli.provider {
         Provider::Bedrock => {
             if !cli.quiet && cli.format != OutputFormat::Quiet {
@@ -302,6 +325,8 @@ async fn check_provider_connectivity(cli: &Cli) -> Result<()> {
                         println!("{}", "✓ Connected".green());
                         println!();
                     }
+                    // Cache successful check
+                    let _ = std::fs::write(&cache_path, "ok");
                     Ok(())
                 }
                 Err(e) => {
@@ -329,6 +354,8 @@ async fn check_provider_connectivity(cli: &Cli) -> Result<()> {
                 println!("{} Using Anthropic API (API key configured)", "✓".green());
                 println!();
             }
+            // Cache successful check
+            let _ = std::fs::write(&cache_path, "ok");
             Ok(())
         }
     }
