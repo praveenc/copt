@@ -2,6 +2,7 @@
 //!
 //! Handles loading configuration from files and environment variables.
 
+// TODO: Wire this config system into main.rs (Phase 3 — merge config with CLI args)
 #![allow(dead_code)]
 
 use anyhow::{Context, Result};

@@ -14,7 +14,6 @@ mod analyzer;
 mod cli;
 mod llm;
 mod optimizer;
-mod rules;
 mod tui;
 mod utils;
 
