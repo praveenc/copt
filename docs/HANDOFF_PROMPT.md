@@ -57,6 +57,7 @@ src/
 
 ## Remaining Work
 
+- **Bedrock API Key auth** (v0.3.2, in progress) — Replace AWS SDK SigV4 with Bearer token auth using Bedrock API keys. Drop `aws-config`, `aws-sdk-bedrockruntime`, `aws-credential-types` deps. Use `reqwest` HTTP calls with `Authorization: Bearer <key>`. Fall back to SigV4 when no API key present.
 - Streaming LLM output (Nice to Have — High effort)
 - Wire `is_rule_enabled()` / `get_severity_override()` from config into analyzer
 - `handle_output()` rebuilds Model from scratch (minor refactor)

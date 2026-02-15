@@ -52,6 +52,17 @@ Successful checks now cached with 5-minute TTL in `/tmp/copt_connectivity_<provi
 
 Default save location changed from `./copt-output/` to `~/.copt/prompts/YYYY-MM-DD/`. Date-bucketed, centralized. `--output-dir` still works for overrides.
 
+### 10. Bedrock API Key authentication
+
+Replace the current AWS SDK SigV4 credential chain (requires AWS CLI, `aws configure`, IAM roles, `AWS_PROFILE`, etc.) with Bedrock API Key Bearer token authentication. Long-term keys support up to 1-year expiry — effectively "set and forget" for a developer CLI tool.
+
+Key changes:
+- Replace `aws-sdk-bedrockruntime` + `aws-config` with direct `reqwest` HTTP calls using `Authorization: Bearer <key>` header
+- Read key from `AWS_BEARER_TOKEN_BEDROCK` env var, `--bedrock-api-key` CLI flag, or `~/.config/copt/config.toml`
+- Drop 3 heavy AWS SDK crates → faster compile times, smaller binary
+- Fall back to existing SigV4 credential chain when no API key is present (backward compatible)
+- Update config file, Raycast script, README, error messages
+
 ## Code Efficiency & Robustness
 
 ### 1. Duplicated `build_editor_command` function — ✅ DONE (v0.3.0)
