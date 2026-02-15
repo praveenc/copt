@@ -2,8 +2,6 @@
 //!
 //! Implements the Model part of the Elm (MVU) architecture.
 
-#![allow(dead_code)]
-
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
@@ -29,10 +27,13 @@ pub enum RenderMode {
     #[default]
     Linear,
     /// Plain text output (non-TTY, piped)
+    #[allow(dead_code)]
     Plain,
     /// JSON output (--format json)
+    #[allow(dead_code)]
     Json,
     /// Quiet mode (--quiet)
+    #[allow(dead_code)]
     Quiet,
 }
 
@@ -83,6 +84,7 @@ impl CategoryNode {
 #[derive(Debug, Clone, Default)]
 pub struct IssueTree {
     pub categories: Vec<CategoryNode>,
+    #[allow(dead_code)]
     pub selected_index: usize,
     /// Tracks which index in the flattened view is selected
     pub flat_index: usize,
@@ -169,6 +171,7 @@ impl IssueTree {
     }
 
     /// Collapse all categories
+    #[allow(dead_code)]
     pub fn collapse_all(&mut self) {
         for cat in &mut self.categories {
             cat.expanded = false;
@@ -177,6 +180,7 @@ impl IssueTree {
     }
 
     /// Expand all categories
+    #[allow(dead_code)]
     pub fn expand_all(&mut self) {
         for cat in &mut self.categories {
             cat.expanded = true;
@@ -184,6 +188,7 @@ impl IssueTree {
     }
 
     /// Get expanded categories (for display)
+    #[allow(dead_code)]
     pub fn expanded_categories(&self) -> HashSet<&str> {
         self.categories
             .iter()
@@ -208,6 +213,7 @@ impl ErrorState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_details(mut self, details: impl Into<String>) -> Self {
         self.details = Some(details.into());
         self
@@ -240,6 +246,7 @@ pub struct Model {
     /// Scroll offset for content
     pub scroll_offset: u16,
     /// Whether to show the diff view
+    #[allow(dead_code)]
     pub show_diff: bool,
     /// Should the app quit?
     pub should_quit: bool,

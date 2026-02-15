@@ -2,8 +2,6 @@
 //!
 //! Implements the Update part of the Elm (MVU) architecture.
 
-#![allow(dead_code)]
-
 use std::time::Duration;
 
 use chrono::Local;
@@ -22,6 +20,7 @@ pub enum Msg {
     /// Tick for animations
     Tick,
     /// Quit the application
+    #[allow(dead_code)]
     Quit,
 }
 

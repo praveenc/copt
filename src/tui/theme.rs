@@ -2,8 +2,6 @@
 //!
 //! Single theme designed to work well on both dark and light terminals.
 
-#![allow(dead_code)]
-
 use ratatui::style::{Color, Modifier, Style};
 
 /// Application theme with consistent styling
@@ -36,6 +34,7 @@ pub struct Theme {
     /// Progress bar filled portion
     pub progress_filled: Style,
     /// Progress bar empty portion
+    #[allow(dead_code)]
     pub progress_empty: Style,
     /// Diff added lines
     pub diff_added: Style,
