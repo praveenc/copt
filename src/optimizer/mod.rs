@@ -4,6 +4,8 @@
 //! optimization of prompts for Claude 4.5 models.
 
 use anyhow::Result;
+use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::analyzer::{Issue, PromptType, Severity};
 use crate::llm::{build_optimization_message, LlmClient, OPTIMIZER_SYSTEM_PROMPT};
@@ -40,23 +42,24 @@ fn apply_static_transformation(prompt: &str, issue: &Issue) -> String {
 
 /// Transform indirect commands like "Can you..." to direct commands
 fn transform_indirect_commands(prompt: &str) -> String {
-    use regex::Regex;
-
-    let patterns = [
-        (r"(?i)^can you\s+", ""),
-        (r"(?i)^could you\s+", ""),
-        (r"(?i)^would you mind\s+", ""),
-        (r"(?i)^is it possible to\s+", ""),
-        (r"(?i)^i was wondering if you could\s+", ""),
-        (r"(?i)^please\s+", ""),
-    ];
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (Regex::new(r"(?i)^can you\s+").unwrap(), ""),
+            (Regex::new(r"(?i)^could you\s+").unwrap(), ""),
+            (Regex::new(r"(?i)^would you mind\s+").unwrap(), ""),
+            (Regex::new(r"(?i)^is it possible to\s+").unwrap(), ""),
+            (
+                Regex::new(r"(?i)^i was wondering if you could\s+").unwrap(),
+                "",
+            ),
+            (Regex::new(r"(?i)^please\s+").unwrap(), ""),
+        ]
+    });
 
     let mut result = prompt.to_string();
 
-    for (pattern, replacement) in patterns {
-        if let Ok(re) = Regex::new(pattern) {
-            result = re.replace(&result, replacement).to_string();
-        }
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace(&result, *replacement).to_string();
     }
 
     // Capitalize first letter if needed
@@ -71,7 +74,7 @@ fn transform_indirect_commands(prompt: &str) -> String {
 
 /// Transform aggressive ALL CAPS emphasis to normal case
 fn transform_aggressive_emphasis(prompt: &str) -> String {
-    use regex::Regex;
+    static CAPS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b([A-Z]{2,})\b").unwrap());
 
     // Match ALL CAPS words that aren't common acronyms
     let acronyms = [
@@ -79,44 +82,47 @@ fn transform_aggressive_emphasis(prompt: &str) -> String {
         "AWS", "GCP", "ID",
     ];
 
-    let re = Regex::new(r"\b([A-Z]{2,})\b").unwrap();
-
-    re.replace_all(prompt, |caps: &regex::Captures| {
-        let word = &caps[1];
-        if acronyms.contains(&word) {
-            word.to_string()
-        } else {
-            // Convert to lowercase, capitalize first letter
-            let lower = word.to_lowercase();
-            if let Some(first) = lower.chars().next() {
-                first.to_uppercase().to_string() + &lower[first.len_utf8()..]
+    CAPS_RE
+        .replace_all(prompt, |caps: &regex::Captures| {
+            let word = &caps[1];
+            if acronyms.contains(&word) {
+                word.to_string()
             } else {
-                lower
+                // Convert to lowercase, capitalize first letter
+                let lower = word.to_lowercase();
+                if let Some(first) = lower.chars().next() {
+                    first.to_uppercase().to_string() + &lower[first.len_utf8()..]
+                } else {
+                    lower
+                }
             }
-        }
-    })
-    .to_string()
+        })
+        .to_string()
 }
 
 /// Transform "think" and variants to Claude 4.5 friendly alternatives
 fn transform_think_word(prompt: &str) -> String {
-    use regex::Regex;
-
-    let replacements = [
-        (r"(?i)\bthink about\b", "consider"),
-        (r"(?i)\bthink through\b", "work through"),
-        (r"(?i)\bI think\b", "I believe"),
-        (r"(?i)\bthinking about\b", "considering"),
-        (r"(?i)\bthinking\b", "evaluating"),
-        (r"(?i)\bthink\b", "consider"),
-    ];
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (Regex::new(r"(?i)\bthink about\b").unwrap(), "consider"),
+            (
+                Regex::new(r"(?i)\bthink through\b").unwrap(),
+                "work through",
+            ),
+            (Regex::new(r"(?i)\bI think\b").unwrap(), "I believe"),
+            (
+                Regex::new(r"(?i)\bthinking about\b").unwrap(),
+                "considering",
+            ),
+            (Regex::new(r"(?i)\bthinking\b").unwrap(), "evaluating"),
+            (Regex::new(r"(?i)\bthink\b").unwrap(), "consider"),
+        ]
+    });
 
     let mut result = prompt.to_string();
 
-    for (pattern, replacement) in replacements {
-        if let Ok(re) = Regex::new(pattern) {
-            result = re.replace_all(&result, replacement).to_string();
-        }
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace_all(&result, *replacement).to_string();
     }
 
     result
@@ -124,27 +130,25 @@ fn transform_think_word(prompt: &str) -> String {
 
 /// Tone down overtriggering language
 fn transform_overtriggering_language(prompt: &str) -> String {
-    use regex::Regex;
-
-    let replacements = [
-        (r"(?i)\bCRITICAL:\s*", ""),
-        (r"(?i)\bIMPORTANT:\s*", ""),
-        (r"(?i)\bYou MUST\b", "You should"),
-        (r"(?i)\bMUST ALWAYS\b", "should"),
-        (r"(?i)\bALWAYS MUST\b", "should"),
-        (r"(?i)\bNEVER EVER\b", "avoid"),
-        (r"(?i)!{2,}", "!"),
-        (r"(?i)\bMANDATORY\b", "required"),
-        (r"(?i)\bESSENTIAL\b", "important"),
-        (r"(?i)\bCRUCIAL\b", "important"),
-    ];
+    static PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+        vec![
+            (Regex::new(r"(?i)\bCRITICAL:\s*").unwrap(), ""),
+            (Regex::new(r"(?i)\bIMPORTANT:\s*").unwrap(), ""),
+            (Regex::new(r"(?i)\bYou MUST\b").unwrap(), "You should"),
+            (Regex::new(r"(?i)\bMUST ALWAYS\b").unwrap(), "should"),
+            (Regex::new(r"(?i)\bALWAYS MUST\b").unwrap(), "should"),
+            (Regex::new(r"(?i)\bNEVER EVER\b").unwrap(), "avoid"),
+            (Regex::new(r"(?i)!{2,}").unwrap(), "!"),
+            (Regex::new(r"(?i)\bMANDATORY\b").unwrap(), "required"),
+            (Regex::new(r"(?i)\bESSENTIAL\b").unwrap(), "important"),
+            (Regex::new(r"(?i)\bCRUCIAL\b").unwrap(), "important"),
+        ]
+    });
 
     let mut result = prompt.to_string();
 
-    for (pattern, replacement) in replacements {
-        if let Ok(re) = Regex::new(pattern) {
-            result = re.replace_all(&result, replacement).to_string();
-        }
+    for (re, replacement) in PATTERNS.iter() {
+        result = re.replace_all(&result, *replacement).to_string();
     }
 
     result

@@ -136,6 +136,15 @@ enum Provider {
     Bedrock,
 }
 
+impl Provider {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Provider::Anthropic => "anthropic",
+            Provider::Bedrock => "bedrock",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputFormat {
     Pretty,
@@ -151,7 +160,10 @@ async fn main() -> Result<()> {
     }
 
     // Parse CLI arguments
-    let cli = Cli::parse();
+    let mut cli = Cli::parse();
+
+    // Resolve model aliases (e.g., "sonnet" → full Bedrock ARN)
+    cli.model = cli::resolve_model_id(&cli.model);
 
     // Interactive mode requires TTY
     if cli.interactive && !io::stdout().is_terminal() {
@@ -351,31 +363,7 @@ async fn editor_input() -> Result<String> {
 /// GUI editors fork and return immediately unless given a --wait flag.
 /// We only add flags for editors we've verified support them.
 fn build_editor_command(editor: &str, file_path: &std::path::Path) -> (String, Vec<String>) {
-    let editor_lower = editor.to_lowercase();
-    let file_arg = file_path.to_string_lossy().to_string();
-
-    // Extract just the binary name for matching (handle full paths)
-    let editor_name = std::path::Path::new(editor)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(editor)
-        .to_lowercase();
-
-    // VSCode: `code --wait` (verified)
-    if editor_name.contains("code") || editor_lower.contains("visual studio code") {
-        return (editor.to_string(), vec!["--wait".to_string(), file_arg]);
-    }
-
-    // Zed: `zed --wait` or `/path/to/Zed.app/.../cli --wait` (verified)
-    if editor_name == "cli" && editor_lower.contains("zed") {
-        return (editor.to_string(), vec!["--wait".to_string(), file_arg]);
-    }
-    if editor_name.contains("zed") {
-        return (editor.to_string(), vec!["--wait".to_string(), file_arg]);
-    }
-
-    // Default: terminal editors (vim, nano, emacs, etc.) block by default
-    (editor.to_string(), vec![file_arg])
+    utils::editor::build_editor_command(editor, file_path, true)
 }
 
 /// Main optimization result structure
@@ -471,7 +459,7 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
             original_tokens: utils::count_tokens(prompt),
             optimized_tokens: utils::count_tokens(prompt),
             processing_time_ms: start_time.elapsed().as_millis() as u64,
-            provider: format!("{:?}", cli.provider).to_lowercase(),
+            provider: cli.provider.as_str().to_string(),
             model: cli.model.clone(),
             ..Default::default()
         };
@@ -547,7 +535,7 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
             .collect::<std::collections::HashSet<_>>()
             .len(),
         processing_time_ms: processing_time,
-        provider: format!("{:?}", cli.provider).to_lowercase(),
+        provider: cli.provider.as_str().to_string(),
         model: cli.model.clone(),
     };
 
@@ -763,7 +751,7 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
                         .collect::<std::collections::HashSet<_>>()
                         .len(),
                     processing_time_ms: processing_time,
-                    provider: format!("{:?}", cli.provider).to_lowercase(),
+                    provider: cli.provider.as_str().to_string(),
                     model: cli.model.clone(),
                 };
 

@@ -7,7 +7,6 @@ pub mod suggest;
 
 // TODO: Wire resolve_model_id() into main.rs (Phase 2 quick win)
 /// Short aliases for models
-#[allow(dead_code)]
 pub const MODEL_ALIASES: &[(&str, &str)] = &[
     ("sonnet", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
     ("sonnet-4.5", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
@@ -18,7 +17,6 @@ pub const MODEL_ALIASES: &[(&str, &str)] = &[
 ];
 
 /// Resolve a model name or alias to a full model ID
-#[allow(dead_code)]
 pub fn resolve_model_id(model: &str) -> String {
     // Check if it's an alias
     for (alias, full_id) in MODEL_ALIASES {

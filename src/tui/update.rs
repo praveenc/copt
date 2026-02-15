@@ -287,31 +287,7 @@ fn handle_open_in_editor(model: &mut Model) -> bool {
 
 /// Build editor command with appropriate wait flags for GUI editors
 fn build_editor_command(editor: &str, file_path: &std::path::Path) -> (String, Vec<String>) {
-    let editor_lower = editor.to_lowercase();
-    let file_arg = file_path.to_string_lossy().to_string();
-
-    // Extract just the binary name for matching (handle full paths)
-    let editor_name = std::path::Path::new(editor)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(editor)
-        .to_lowercase();
-
-    // VSCode: `code` (no --wait needed for viewing)
-    if editor_name.contains("code") || editor_lower.contains("visual studio code") {
-        return (editor.to_string(), vec![file_arg]);
-    }
-
-    // Zed: `zed` or `/path/to/Zed.app/.../cli`
-    if editor_name == "cli" && editor_lower.contains("zed") {
-        return (editor.to_string(), vec![file_arg]);
-    }
-    if editor_name.contains("zed") {
-        return (editor.to_string(), vec![file_arg]);
-    }
-
-    // Default: terminal editors (vim, nano, emacs, etc.)
-    (editor.to_string(), vec![file_arg])
+    crate::utils::editor::build_editor_command(editor, file_path, false)
 }
 
 /// Copy text to system clipboard
