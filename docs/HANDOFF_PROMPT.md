@@ -4,7 +4,7 @@
 
 You are continuing work on **COPT** (Claude Prompt Optimizer), a Rust CLI tool that analyzes and rewrites prompts for Claude 4.5 models. The project is at v0.2.3, functional, and in active use.
 
-A comprehensive code review was completed and documented in `docs/IMPROVEMENTS.md`. **Phase 1 (Dead Code Cleanup) and Phase 2 (Quick Wins) are complete** on the `feature/dead-code-cleanup` branch. Phases 3-4 remain.
+A comprehensive code review was completed and documented in `docs/IMPROVEMENTS.md`. **Phases 1-4 are complete** on the `feature/dead-code-cleanup` branch. Only Phase 4.1 (expand static optimization coverage) remains as future work.
 
 ## What Was Done
 
@@ -46,24 +46,57 @@ Branch: `feature/dead-code-cleanup` (8 commits ahead of main, all pushed)
 - Converted all 4 optimizer transform functions to `LazyLock<Regex>` (compile-once)
 - Added `Provider::as_str()` method, replaced 3 occurrences of `format!("{:?}", cli.provider).to_lowercase()`
 
+### Phase 3: Feature Wiring (2 commits)
+
+**Commit 8** (`3ebe1d1`): Wire config file into main.rs
+- Config loaded from `~/.config/copt/config.toml` (or `~/.copt.toml` legacy)
+- Uses clap `ArgMatches::value_source()` to detect explicit vs default CLI values
+- Config applies: provider, model, region, format, show_diff — CLI always takes precedence
+- Verbose flag (`-v`) shows config load path
+- Removed blanket `#![allow(dead_code)]` from config.rs, added targeted allows for Phase 4 items
+
+**Commit 9** (`ece2495`): Wire enhancements into optimization pipeline
+- Offline mode: enhancement hints appended to optimized output
+- LLM mode: enhancements included in issues summary for LLM context
+- 4 enhancement patterns: parallel_tools, exploration, action_default, summary
+- Removed `#[allow(dead_code)]` from Enhancement struct and `get_applicable_enhancements()`
+
+**Decision**: Keep heuristic token counting (chars/4) — sufficient for display/stats, LLM providers handle their own tokenization
+
+### Phase 4: New Features (3 commits)
+
+**Commit 10** (`7b568b5`): Fix STY004/STY002 double-replacement bug
+- Static transforms now applied in fixed priority order instead of issue order
+- STY004 (overtriggering) runs before STY002 (emphasis) so "CRITICAL:" is removed before caps are lowercased
+
+**Commit 11** (`be7c30b`): Cache connectivity check results
+- Successful checks cached in `/tmp/copt_connectivity_<provider>_<region>.cache` with 5-minute TTL
+- Eliminates 2-5s latency on repeated invocations
+- Verbose flag shows when cache is used
+
+**Commit 12** (`1a36d37`): Add `--config-init` flag
+- `copt --config-init` creates default config at `~/.config/copt/config.toml`
+- Generates complete TOML with all sections: default, anthropic, bedrock, output, rules
+
 ### Housekeeping commits
 - **Commit 6** (`06cd276`): Updated handoff prompt after Phase 1
-- **Commit 7** (`fbb3b24`): Added `ci-quiet` Makefile target
+- **Commit 7** (`1bd7c89`): Updated handoff prompt with Phase 2 completion
+- **Commit 8** (`fbb3b24`): Added `ci-quiet` Makefile target
 
-## Current Project Structure (Post Phase 1+2)
+## Current Project Structure (Post Phase 1-4)
 
 ```
 src/
 ├── main.rs              # CLI entry point, clap args, orchestration (~800 lines)
 ├── analyzer/mod.rs      # Rule-based prompt analysis, 25 rules across 8 categories
-├── optimizer/mod.rs     # Static transforms (4 rules, LazyLock regex) + LLM optimization
+├── optimizer/mod.rs     # Static transforms (4 rules, LazyLock regex) + enhancements + LLM optimization
 ├── llm/
 │   ├── mod.rs           # LlmClient trait, OPTIMIZER_SYSTEM_PROMPT
 │   ├── anthropic.rs     # Anthropic API client
 │   └── bedrock.rs       # AWS Bedrock client (default provider)
 ├── cli/
 │   ├── mod.rs           # Model aliases + resolve_model_id() (NOW WIRED)
-│   ├── config.rs        # Full config system (TODO: wire in Phase 3)
+│   ├── config.rs        # Config file system (NOW WIRED — loads defaults, CLI overrides)
 │   └── suggest.rs       # Interactive suggestion flow for vague prompts
 ├── utils/
 │   ├── mod.rs           # Re-exports count_tokens + editor
@@ -86,30 +119,16 @@ src/
 
 ## Remaining Work
 
-### Phase 3: Feature Wiring (connect existing code)
-1. Wire `cli/config.rs` into `main.rs` (merge config with CLI args, CLI takes precedence)
-   - `config.rs` has a complete load/save/validate system that's never called
-   - Remove the blanket `#![allow(dead_code)]` from config.rs once wired
-2. Wire `get_applicable_enhancements()` into optimization pipeline
-   - `optimizer/mod.rs` has `Enhancement` struct and `get_applicable_enhancements()` that maps analysis findings to specific improvements
-   - Currently the static optimizer only runs 4 hardcoded transforms; this would make it data-driven
-3. Decide: re-add tiktoken-rs or keep heuristic token counting
-   - tiktoken-rs was removed in Phase 1 as unused dep, but `count_tokens()` uses a rough `chars/4` heuristic
-   - If accuracy matters, re-add tiktoken-rs and wire it properly
+### Expand Static Optimization Coverage
+- Only 4 of 25 detected rules have static transforms — offline mode underserves
+- Priority candidates: STY001 (role-only prompts), FMT002 (missing XML structure), EXP002 (negative instructions)
+- Each new transform needs: regex pattern, replacement logic, unit test
 
-### Phase 4: New Features
-1. Expand static optimization coverage (STY001, FMT002, EXP002)
-   - Only 4 of 25 detected rules have static transforms — offline mode underserves
-2. Cache connectivity check results
-   - Currently adds 2-5s latency on every invocation checking if API is reachable
-3. Add `--config init` subcommand (depends on Phase 3 config wiring)
-4. Fix STY004 double-replacement bug in `transform_overtriggering_language()`
-   - Static transforms STY002/STY004 have fragile ordering interactions
-
-### Code Quality (can be done alongside any phase)
+### Code Quality (can be done alongside features)
 - `handle_output()` in main.rs rebuilds Model from scratch instead of reusing
 - Token counting called redundantly on same prompt in multiple places
 - Consider streaming LLM output for better UX
+- Wire `is_rule_enabled()` / `get_severity_override()` from config into analyzer
 
 ## Build & Test Commands
 
