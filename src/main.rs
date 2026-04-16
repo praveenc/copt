@@ -233,6 +233,21 @@ async fn main() -> Result<()> {
         check_provider_connectivity(&cli).await?;
     }
 
+    // Tip: when targeting 4.7 with a non-Opus-class rewriter, suggest the
+    // Opus-class rewriters which empirically produce the cleanest 4.7 output
+    // (Haiku over-elaborates; Sonnet occasionally drops XML structure).
+    if !cli.quiet
+        && cli.format != OutputFormat::Quiet
+        && parse_target_family(&cli.target) == Some(llm::ModelFamily::Claude47)
+        && !is_opus_rewriter(&cli.model)
+    {
+        eprintln!(
+            "{} Targeting Claude 4.7 with `{}`. For the cleanest 4.7 rewrite we recommend an Opus-class rewriter (`-m opus-4.6` or `-m opus-4.7`).",
+            "ℹ".bright_cyan(),
+            cli.model
+        );
+    }
+
     // Get the input prompt
     let prompt = get_input_prompt(&cli).await?;
 
@@ -267,6 +282,14 @@ fn parse_target_family(target: &str) -> Option<llm::ModelFamily> {
         "4.7" => Some(llm::ModelFamily::Claude47),
         _ => None, // "auto" or anything else
     }
+}
+
+/// Return true when the resolved model ID refers to an Opus-class rewriter.
+/// Used to print a "recommend Opus rewriter" hint when the user targets 4.7
+/// with a smaller model.
+fn is_opus_rewriter(model: &str) -> bool {
+    let lower = model.to_lowercase();
+    lower.contains("opus")
 }
 
 fn apply_config_defaults(cli: &mut Cli, matches: &clap::ArgMatches) {
@@ -847,11 +870,32 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
             })?;
         }
 
-        // Derive original prompt path from optimized path
+        // Derive original prompt path from optimized path.
+        // When the filename contains the `_optimized.txt` sentinel (auto-save
+        // convention), swap to `_original.txt`. For an explicit `-o <path>`
+        // that doesn't follow that convention, append `.original` before the
+        // extension so we don't clobber the optimized file.
         let original_path = {
             let filename = path.file_name().unwrap().to_string_lossy();
-            let original_filename = filename.replace("_optimized.txt", "_original.txt");
-            path.with_file_name(original_filename)
+            if filename.contains("_optimized.txt") {
+                let original_filename = filename.replace("_optimized.txt", "_original.txt");
+                path.with_file_name(original_filename)
+            } else {
+                let stem = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let ext = path
+                    .extension()
+                    .map(|e| e.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let original_filename = if ext.is_empty() {
+                    format!("{stem}.original")
+                } else {
+                    format!("{stem}.original.{ext}")
+                };
+                path.with_file_name(original_filename)
+            }
         };
 
         // Write the optimized prompt

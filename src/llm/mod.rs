@@ -167,6 +167,8 @@ If the prompt contains XML blocks like <examples>, <example>, <instructions>, <c
 - Preserve the original intent and meaning
 - Keep the prompt practical and focused
 - Do not over-engineer or add unnecessary complexity
+- STRUCTURE: Wrap the rewrite in semantic XML tags at the top level — at minimum <task>, and whichever of <requirements>, <response_format>, <constraints>, <examples> apply. Do NOT wrap the entire output in a single outer <prompt> or <rewrite> tag; emit sibling top-level tags instead.
+- LENGTH: The rewrite MUST NOT exceed ~3x the original word count. Prefer removing scaffolding over adding it. Omit sections that are not strictly useful for this particular prompt.
 </output_requirements>"#;
 
 /// Back-compat re-export — legacy name used by callers predating the 4.7 split.
@@ -294,6 +296,8 @@ If the prompt contains XML blocks like <examples>, <example>, <instructions>,
 - Preserve the original intent and meaning
 - Keep the prompt practical and focused; do not over-engineer
 - Prefer positive examples over negative prohibitions
+- STRUCTURE: Wrap the rewrite in semantic XML tags at the top level — at minimum <task>, and whichever of <requirements>, <response_format>, <constraints>, <examples>, <scratchpad_policy> apply. Do NOT wrap the entire output in a single outer <prompt> or <rewrite> tag; emit sibling top-level tags instead.
+- LENGTH: The rewrite MUST NOT exceed ~3x the original word count. Prefer removing scaffolding over adding it. Omit sections that are not strictly useful for this particular prompt.
 </output_requirements>"#;
 
 /// Select the optimizer meta-prompt for a given family.

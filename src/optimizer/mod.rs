@@ -389,6 +389,22 @@ fn clean_llm_output(output: &str) -> String {
         result = result[..result.len() - 3].trim_end().to_string();
     }
 
+    // Strip outer <prompt>...</prompt> or <rewrite>...</rewrite> wrappers that
+    // some rewriter models (Haiku 4.5 in particular) emit despite the
+    // meta-prompt explicitly forbidding it. We only strip when the ENTIRE
+    // output is wrapped in one such tag — semantic top-level tags like
+    // <task>, <examples>, <instructions> are never stripped.
+    for wrapper in ["prompt", "rewrite", "optimized_prompt", "output"] {
+        let open = format!("<{wrapper}>");
+        let close = format!("</{wrapper}>");
+        if result.starts_with(&open) && result.trim_end().ends_with(&close) {
+            let trimmed = result.trim_end();
+            result = trimmed[open.len()..trimmed.len() - close.len()]
+                .trim()
+                .to_string();
+        }
+    }
+
     result
 }
 
@@ -644,6 +660,34 @@ mod tests {
             "Do this task"
         );
         assert_eq!(clean_llm_output("```\nCode here\n```"), "Code here");
+    }
+
+    #[test]
+    fn test_clean_llm_output_strips_prompt_wrapper() {
+        let wrapped = "<prompt>\n<task>Do X</task>\n</prompt>";
+        let cleaned = clean_llm_output(wrapped);
+        assert!(!cleaned.starts_with("<prompt>"));
+        assert!(cleaned.starts_with("<task>"));
+        assert!(cleaned.contains("Do X"));
+    }
+
+    #[test]
+    fn test_clean_llm_output_preserves_semantic_tags() {
+        // Semantic top-level tags like <task> must NEVER be stripped,
+        // even if the entire output starts and ends with them.
+        let semantic = "<task>Do X</task>";
+        assert_eq!(clean_llm_output(semantic), semantic);
+
+        let with_examples = "<examples><example>ok</example></examples>";
+        assert_eq!(clean_llm_output(with_examples), with_examples);
+    }
+
+    #[test]
+    fn test_clean_llm_output_strips_other_wrappers() {
+        for wrapper in ["rewrite", "optimized_prompt", "output"] {
+            let input = format!("<{w}>body</{w}>", w = wrapper);
+            assert_eq!(clean_llm_output(&input), "body");
+        }
     }
 
     #[test]
