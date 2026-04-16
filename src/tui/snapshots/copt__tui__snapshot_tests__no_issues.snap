@@ -3,7 +3,7 @@ source: src/tui/snapshot_tests.rs
 expression: output
 ---
 ⚡  CLAUDE PROMPT OPTIMIZER v0.3.2                                               
-Optimize prompts for Claude 4.5                                                 
+Optimize prompts for Claude 4.x                                                 
 📥  Input: stdin (30 chars, 5 tokens)                                            
 ────────────────────────────────────────────────────────────────────────────────
 ┌ 📊  Analysis Results ─────────────────────────────────────────────────────────┐

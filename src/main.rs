@@ -1,6 +1,6 @@
 //! copt - Claude Optimizer
 //!
-//! A beautiful CLI tool to optimize prompts for Claude 4.5 family of models.
+//! A beautiful CLI tool to optimize prompts for the Claude 4.x family of models (4.5, 4.6, and 4.7).
 //! Analyzes prompts and rewrites them according to Anthropic's official best practices.
 
 use anyhow::{Context, Result};
@@ -20,12 +20,12 @@ mod utils;
 // Re-export types from analyzer for use throughout the crate
 pub use analyzer::{Issue, Severity};
 
-/// Claude Optimizer - A beautiful CLI tool to optimize prompts for Claude 4.5 models
+/// Claude Optimizer - A beautiful CLI tool to optimize prompts for Claude 4.x models (4.5 / 4.6 / 4.7)
 #[derive(Parser, Debug)]
 #[command(
     name = "copt",
     version,
-    about = "⚡ Optimize prompts for Claude 4.5 models",
+    about = "⚡ Optimize prompts for Claude 4.x models (4.5, 4.6, 4.7)",
     after_help = "Examples:\n  copt \"Your prompt here\"\n  copt -f prompt.txt\n  copt -f prompt.txt --offline\n  cat prompt.txt | copt"
 )]
 struct Cli {
@@ -193,6 +193,17 @@ async fn main() -> Result<()> {
 
     // Resolve model aliases (e.g., "sonnet" → full Bedrock ARN)
     cli.model = cli::resolve_model_id(&cli.model);
+
+    // Guard against selecting Claude 4.7 family models that are not yet
+    // released. As of 2026-04-16 only Claude Opus 4.7 is GA — Sonnet 4.7 and
+    // Haiku 4.7 error with a clear message. The guard is skipped in offline
+    // mode so static analysis with a 4.7 target is still useful.
+    if !cli.offline {
+        if let Some(err) = llm::unreleased_model_error(&cli.model) {
+            eprintln!("{} {}", "Error:".red().bold(), err);
+            std::process::exit(1);
+        }
+    }
 
     // Interactive mode requires TTY
     if cli.interactive && !io::stdout().is_terminal() {

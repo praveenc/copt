@@ -221,4 +221,23 @@ Before tagging a release:
 
 ---
 
-*Last updated: 2026-01-23*
+### 9. Back-Compat Re-Exports and Dead-Code Warnings
+
+**Problem:** When introducing a new name for an existing public constant (e.g., splitting `OPTIMIZER_SYSTEM_PROMPT` into `OPTIMIZER_SYSTEM_PROMPT_4_5` and keeping `OPTIMIZER_SYSTEM_PROMPT` as a re-export), `cargo build` emits `constant ... is never used` because the internal codebase has already been migrated to the new name.
+
+```rust
+// ❌ WARNING - dead code even though this is public
+pub const OPTIMIZER_SYSTEM_PROMPT: &str = OPTIMIZER_SYSTEM_PROMPT_4_5;
+```
+
+```rust
+// ✅ CORRECT - explicit allow for back-compat re-exports
+#[allow(dead_code)]
+pub const OPTIMIZER_SYSTEM_PROMPT: &str = OPTIMIZER_SYSTEM_PROMPT_4_5;
+```
+
+**Rule:** `pub` alone does not silence `dead_code` for binary crates. For library-style back-compat re-exports inside a binary crate, add `#[allow(dead_code)]` with a comment explaining the re-export is intentional.
+
+---
+
+*Last updated: 2026-04-16*

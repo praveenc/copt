@@ -8,7 +8,7 @@ use regex::Regex;
 use std::sync::LazyLock;
 
 use crate::analyzer::{Issue, PromptType, Severity};
-use crate::llm::{build_optimization_message, LlmClient, OPTIMIZER_SYSTEM_PROMPT};
+use crate::llm::{build_optimization_message, system_prompt_for_family, LlmClient, ModelFamily};
 
 /// Static optimization using rule-based transformations
 ///
@@ -29,11 +29,31 @@ pub fn optimize_static(prompt: &str, issues: &[Issue]) -> Result<String> {
         }
     }
 
-    // Append applicable enhancement hints
+    // Append applicable enhancement hints (family-neutral set).
     let enhancements = get_applicable_enhancements(&result);
     if !enhancements.is_empty() {
         for enhancement in &enhancements {
             result.push_str(enhancement);
+        }
+    }
+
+    Ok(result)
+}
+
+/// Family-aware variant of `optimize_static` that additionally appends the
+/// Claude 4.7-specific hints (literal scope, adaptive thinking, scratchpad,
+/// vision) when targeting 4.7. Callers that don't care about the family can
+/// keep using `optimize_static`.
+pub fn optimize_static_for_family(
+    prompt: &str,
+    issues: &[Issue],
+    family: ModelFamily,
+) -> Result<String> {
+    let mut result = optimize_static(prompt, issues)?;
+
+    if family == ModelFamily::Claude47 {
+        for hint in get_family_enhancements(&result, family) {
+            result.push_str(hint);
         }
     }
 
@@ -261,6 +281,10 @@ fn transform_overtriggering_language(prompt: &str) -> String {
 }
 
 /// Optimize a prompt using an LLM
+///
+/// The target `model` string drives which model family's meta-prompt is used
+/// (see `ModelFamily::from_model_id`). Unknown model IDs fall back to the
+/// 4.5 meta-prompt, preserving historical behaviour.
 pub async fn optimize_with_llm(
     prompt: &str,
     issues: &[Issue],
@@ -268,18 +292,24 @@ pub async fn optimize_with_llm(
     model: &str,
     prompt_type: PromptType,
 ) -> Result<String> {
-    // First apply static transformations for quick wins
-    let partially_optimized = optimize_static(prompt, issues)?;
+    let family = ModelFamily::from_model_id(model);
+
+    // First apply static transformations for quick wins (family-aware so 4.7
+    // static hints make it into the user message as enhancement context).
+    let partially_optimized = optimize_static_for_family(prompt, issues, family)?;
 
     // Build the user message with detected issues, enhancements, and prompt type
     let issues_summary = format_issues_for_llm(issues);
-    let enhancements = get_applicable_enhancements(&partially_optimized);
-    let enhancements_summary = if enhancements.is_empty() {
+    let mut all_enhancements = get_applicable_enhancements(&partially_optimized);
+    if family == ModelFamily::Claude47 {
+        all_enhancements.extend(get_family_enhancements(&partially_optimized, family));
+    }
+    let enhancements_summary = if all_enhancements.is_empty() {
         String::new()
     } else {
         format!(
             "\n\nSuggested enhancements to incorporate:\n{}",
-            enhancements
+            all_enhancements
                 .iter()
                 .map(|e| format!("- {}", e.trim()))
                 .collect::<Vec<_>>()
@@ -291,11 +321,13 @@ pub async fn optimize_with_llm(
         &partially_optimized,
         &format!("{}{}", issues_summary, enhancements_summary),
         prompt_type_str,
+        family,
     );
 
-    // Call the LLM
+    // Call the LLM using the family-specific meta-prompt.
+    let system_prompt = system_prompt_for_family(family);
     let optimized = client
-        .complete(OPTIMIZER_SYSTEM_PROMPT, &user_message, model, 4096)
+        .complete(system_prompt, &user_message, model, 4096)
         .await?;
 
     // Clean up any accidental wrapping the LLM might add
@@ -416,6 +448,114 @@ pub fn get_applicable_enhancements(prompt: &str) -> Vec<&'static str> {
         .filter(|e| (e.condition)(prompt))
         .map(|e| e.template)
         .collect()
+}
+
+/// Claude 4.7-specific enhancement hints.
+///
+/// These are gated behind `ModelFamily::Claude47` so 4.5/4.6 output is
+/// unchanged. Each hint targets one of the eight 4.7 prompting rules.
+pub fn get_family_enhancements(prompt: &str, family: ModelFamily) -> Vec<&'static str> {
+    if family != ModelFamily::Claude47 {
+        return Vec::new();
+    }
+
+    let lower = prompt.to_lowercase();
+    let mut hints: Vec<&'static str> = Vec::new();
+
+    // 1. Literal instruction following — state scope explicitly.
+    if lower.contains(" each ")
+        || lower.contains(" every ")
+        || lower.contains(" all ")
+        || lower.contains(" any ")
+    {
+        hints.push(
+            "\n\nWhen an instruction should apply broadly, state the scope explicitly (e.g., \"apply to every section, not just the first\"). Claude 4.7 interprets prompts literally and will not silently generalize.",
+        );
+    }
+
+    // 2. Adaptive thinking — nudge based on reasoning keywords.
+    if lower.contains("think")
+        || lower.contains("reason")
+        || lower.contains("analyze")
+        || lower.contains("plan")
+    {
+        hints.push(
+            "\n\nIf the task genuinely benefits from reasoning, say so: \"This task involves multi-step reasoning. Think carefully through the problem before responding.\" Adaptive thinking is off by default on Claude 4.7.",
+        );
+    }
+
+    // 3. Effort-level awareness for coding / agentic work.
+    if lower.contains("code")
+        || lower.contains("refactor")
+        || lower.contains("implement")
+        || lower.contains("agent")
+        || lower.contains("tool")
+    {
+        hints.push(
+            "\n\nFor coding and agentic workloads on Claude 4.7, xhigh effort is the recommended default; use at minimum high effort for intelligence-sensitive work.",
+        );
+    }
+
+    // 4. Scratchpad / memory directives for long-horizon work.
+    if prompt.len() > 500
+        || lower.contains("long")
+        || lower.contains("multi-step")
+        || lower.contains("agent")
+        || lower.contains("across turns")
+    {
+        hints.push(
+            "\n\nMaintain a scratchpad of intermediate findings, open questions, and decisions. Consult it before each new step and update it after each tool call. Claude 4.7 is meaningfully better at writing and using file-system memory.",
+        );
+    }
+
+    // 5. Condensed context — remove 4.5/4.6 scaffolding.
+    if lower.contains("double-check")
+        || lower.contains("status update")
+        || lower.contains("summarize progress")
+        || lower.contains("after every")
+    {
+        hints.push(
+            "\n\nClaude 4.7 provides native progress updates and self-checking — remove forced interim-status or self-verification scaffolding left over from 4.5/4.6 prompts.",
+        );
+    }
+
+    // 6. Tone specification when a voice is implied.
+    if lower.contains("friendly")
+        || lower.contains("warm")
+        || lower.contains("helpful tone")
+        || lower.contains("conversational")
+    {
+        hints.push(
+            "\n\nClaude 4.7 defaults to a direct, opinionated tone with fewer emoji than 4.6. If a warmer voice is required, state it explicitly, e.g., \"Use a warm, collaborative tone. Acknowledge the user's framing before answering.\"",
+        );
+    }
+
+    // 7. Response-length calibration.
+    if lower.contains("concise")
+        || lower.contains("brief")
+        || lower.contains("short")
+        || lower.contains("verbose")
+        || lower.contains("thorough")
+    {
+        hints.push(
+            "\n\nClaude 4.7 calibrates response length to perceived task complexity. Prefer a positive example of the target concision over \"don't over-explain\" negatives, e.g., \"Provide concise, focused responses. Skip non-essential context and keep examples minimal.\"",
+        );
+    }
+
+    // 8. Vision-aware instructions.
+    if lower.contains("image")
+        || lower.contains("screenshot")
+        || lower.contains("pixel")
+        || lower.contains("bounding box")
+        || lower.contains("coordinate")
+        || lower.contains("vision")
+    {
+        hints.push(
+            "\n\nClaude 4.7 supports high-resolution images up to 2576px / 3.75MP and returns pointing/bounding-box coordinates 1:1 with actual image pixels. Remove any scale-factor conversion logic. If pixel-level fidelity is not required, downsample images to 1080p before sending to control token usage.",
+        );
+    }
+
+    hints
 }
 
 #[cfg(test)]

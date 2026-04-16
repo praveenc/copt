@@ -254,6 +254,9 @@ fn get_bedrock_model_id(model: &str) -> String {
         "claude-opus-4-5-20251101" | "claude-opus-4.5" | "opus-4.5" | "opus" => {
             "global.anthropic.claude-opus-4-5-20251101-v1:0".to_string()
         }
+        "claude-opus-4-7" | "claude-opus-4.7" | "opus-4.7" => {
+            "global.anthropic.claude-opus-4-7-v1:0".to_string()
+        }
 
         // Legacy model ID format - convert to inference profile
         "anthropic.claude-sonnet-4-5-20250929-v1:0" => {
@@ -608,6 +611,14 @@ mod tests {
         assert_eq!(
             get_bedrock_model_id("haiku-4.5"),
             "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+        );
+        assert_eq!(
+            get_bedrock_model_id("opus-4.7"),
+            "global.anthropic.claude-opus-4-7-v1:0"
+        );
+        assert_eq!(
+            get_bedrock_model_id("claude-opus-4-7"),
+            "global.anthropic.claude-opus-4-7-v1:0"
         );
     }
 
