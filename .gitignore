@@ -49,6 +49,10 @@ images/tmp/
 # Test prompt files (if any)
 test_prompt.txt
 
+# Local seed prompts used during feature work (kept untracked)
+docs/SEED_PROMPT.txt
+docs/SEED_PROMPT-*.txt
+
 # bv (beads viewer) local config and caches
 .bv/
 .claude/*.local.*

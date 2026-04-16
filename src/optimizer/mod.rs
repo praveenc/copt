@@ -282,17 +282,20 @@ fn transform_overtriggering_language(prompt: &str) -> String {
 
 /// Optimize a prompt using an LLM
 ///
-/// The target `model` string drives which model family's meta-prompt is used
-/// (see `ModelFamily::from_model_id`). Unknown model IDs fall back to the
-/// 4.5 meta-prompt, preserving historical behaviour.
+/// The `target_family` parameter controls WHICH Claude family's best-practices
+/// the rewrite is optimized for. Pass `None` to infer the family from `model`
+/// (historical behaviour) or `Some(family)` to decouple "rewriter model" from
+/// "target family" — e.g., using Sonnet 4.5 to rewrite a prompt for Opus 4.7.
+/// Unknown model IDs fall back to the 4.5 meta-prompt.
 pub async fn optimize_with_llm(
     prompt: &str,
     issues: &[Issue],
     client: &dyn LlmClient,
     model: &str,
     prompt_type: PromptType,
+    target_family: Option<ModelFamily>,
 ) -> Result<String> {
-    let family = ModelFamily::from_model_id(model);
+    let family = target_family.unwrap_or_else(|| ModelFamily::from_model_id(model));
 
     // First apply static transformations for quick wins (family-aware so 4.7
     // static hints make it into the user message as enhancement context).

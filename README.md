@@ -142,6 +142,7 @@ Options:
       --no-save                  Disable auto-save
   -p, --provider <PROVIDER>      Provider: anthropic, bedrock
   -m, --model <MODEL>            Model ID or alias
+  -t, --target <FAMILY>          Target Claude family: auto (default), 4.5, 4.6, 4.7
       --region <REGION>          AWS region for Bedrock
       --format <FORMAT>          Output format: pretty, json, quiet
       --diff                     Show before/after diff
@@ -170,8 +171,9 @@ Use short aliases instead of full Bedrock ARNs:
 |-------|-------|
 | `sonnet` / `sonnet-4.5` | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
 | `opus` / `opus-4.5` | `us.anthropic.claude-opus-4-5-20251101-v1:0` |
-| `opus-4.6` | `us.anthropic.claude-opus-4-6-v1` |
-| `opus-4.7` | `global.anthropic.claude-opus-4-7-v1:0` |
+| `opus-4.6` | `global.anthropic.claude-opus-4-6-v1` |
+| `sonnet-4.6` | `global.anthropic.claude-sonnet-4-6` |
+| `opus-4.7` | `global.anthropic.claude-opus-4-7` |
 | `haiku` / `haiku-4.5` | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 
 ```bash
@@ -192,6 +194,23 @@ Selecting `sonnet-4.7` or `haiku-4.7` produces a clear "not yet released" error 
 ```bash
 copt -f prompt.txt -m opus-4.7
 ```
+
+### Targeting a family explicitly (`-t` / `--target`)
+
+By default `copt` infers the target Claude family from `--model` (`-m`). To decouple the rewriter model from the target family — for example, to use a fast, cheap Sonnet 4.5 to produce a prompt tailored for Opus 4.7 — pass `-t`:
+
+```bash
+# Opus 4.7 rewrites for Opus 4.7 (auto)
+copt -f prompt.txt -m opus-4.7
+
+# Sonnet 4.5 rewrites for Opus 4.7 family best-practices
+copt -f prompt.txt -m sonnet -t 4.7
+
+# Opus 4.7 rewrites a prompt that will run on Sonnet 4.5
+copt -f prompt.txt -m opus-4.7 -t 4.5
+```
+
+Accepted values for `-t`: `auto` (default), `4.5`, `4.6`, `4.7`.
 
 ### Common Examples
 

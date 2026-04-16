@@ -182,13 +182,20 @@ impl LlmClient for BedrockClient {
         max_tokens: u32,
     ) -> Result<String> {
         let model_id = Self::get_bedrock_model_id(model);
+        let family = crate::llm::ModelFamily::from_model_id(&model_id);
+        // Claude 4.7 removed temperature/top_p/top_k — omit entirely.
+        let temperature = if family == crate::llm::ModelFamily::Claude47 {
+            None
+        } else {
+            Some(0.3)
+        };
 
         // Build the request body in Anthropic's Messages API format
         // (which Bedrock uses for Claude models)
         let request_body = BedrockRequest {
             anthropic_version: "bedrock-2023-05-31".to_string(),
             max_tokens,
-            temperature: Some(0.3),
+            temperature,
             system: Some(system.to_string()),
             messages: vec![BedrockMessage {
                 role: "user".to_string(),
@@ -255,7 +262,10 @@ fn get_bedrock_model_id(model: &str) -> String {
             "global.anthropic.claude-opus-4-5-20251101-v1:0".to_string()
         }
         "claude-opus-4-7" | "claude-opus-4.7" | "opus-4.7" => {
-            "global.anthropic.claude-opus-4-7-v1:0".to_string()
+            "global.anthropic.claude-opus-4-7".to_string()
+        }
+        "claude-sonnet-4-6" | "claude-sonnet-4.6" | "sonnet-4.6" => {
+            "global.anthropic.claude-sonnet-4-6".to_string()
         }
 
         // Legacy model ID format - convert to inference profile
@@ -410,7 +420,14 @@ impl LlmClient for BedrockApiKeyClient {
             }],
             inference_config: Some(ConverseInferenceConfig {
                 max_tokens,
-                temperature: Some(0.3),
+                // Claude 4.7 removed temperature/top_p/top_k — omit for 4.7.
+                temperature: if crate::llm::ModelFamily::from_model_id(&model_id)
+                    == crate::llm::ModelFamily::Claude47
+                {
+                    None
+                } else {
+                    Some(0.3)
+                },
             }),
         };
 
@@ -614,11 +631,15 @@ mod tests {
         );
         assert_eq!(
             get_bedrock_model_id("opus-4.7"),
-            "global.anthropic.claude-opus-4-7-v1:0"
+            "global.anthropic.claude-opus-4-7"
         );
         assert_eq!(
             get_bedrock_model_id("claude-opus-4-7"),
-            "global.anthropic.claude-opus-4-7-v1:0"
+            "global.anthropic.claude-opus-4-7"
+        );
+        assert_eq!(
+            get_bedrock_model_id("sonnet-4.6"),
+            "global.anthropic.claude-sonnet-4-6"
         );
     }
 

@@ -59,7 +59,7 @@ struct Cli {
     )]
     provider: Provider,
 
-    /// Model ID or alias
+    /// Model ID or alias (controls which model performs the rewrite)
     #[arg(
         short,
         long,
@@ -67,6 +67,20 @@ struct Cli {
         default_value = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
     )]
     model: String,
+
+    /// Target Claude family whose best-practices the rewrite should optimize for.
+    /// `auto` (default) infers the family from --model. Choose explicitly to decouple
+    /// the "rewriter" model from the "target" family (e.g., let Sonnet 4.5 rewrite your
+    /// prompt for Opus 4.7: `-m sonnet -t 4.7`).
+    #[arg(
+        short = 't',
+        long = "target",
+        value_name = "FAMILY",
+        value_parser = ["auto", "4.5", "4.6", "4.7"],
+        default_value = "auto",
+        hide_default_value = true
+    )]
+    target: String,
 
     /// AWS region for Bedrock
     #[arg(long, default_value = "us-west-2", hide_default_value = true)]
@@ -244,6 +258,17 @@ async fn main() -> Result<()> {
 
 /// Apply config file defaults for CLI fields the user didn't explicitly set.
 /// CLI args always take precedence over config values.
+/// Parse the `--target` / `-t` CLI value into an explicit `ModelFamily`,
+/// or `None` for `auto` (meaning: derive from the `--model` flag).
+fn parse_target_family(target: &str) -> Option<llm::ModelFamily> {
+    match target {
+        "4.5" => Some(llm::ModelFamily::Claude45),
+        "4.6" => Some(llm::ModelFamily::Claude46),
+        "4.7" => Some(llm::ModelFamily::Claude47),
+        _ => None, // "auto" or anything else
+    }
+}
+
 fn apply_config_defaults(cli: &mut Cli, matches: &clap::ArgMatches) {
     use clap::parser::ValueSource;
 
@@ -678,9 +703,15 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
             }
         };
 
-        let result =
-            optimizer::optimize_with_llm(prompt, &issues, client.as_ref(), &cli.model, prompt_type)
-                .await?;
+        let result = optimizer::optimize_with_llm(
+            prompt,
+            &issues,
+            client.as_ref(),
+            &cli.model,
+            prompt_type,
+            parse_target_family(&cli.target),
+        )
+        .await?;
         if let Some(s) = spinner {
             tui::renderer::stop_optimizing_spinner(s);
         }
@@ -917,6 +948,7 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
             client.as_ref(),
             &cli.model,
             prompt_type,
+            parse_target_family(&cli.target),
         )
         .await
         {

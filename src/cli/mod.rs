@@ -17,8 +17,9 @@ pub const MODEL_ALIASES: &[(&str, &str)] = &[
     ("sonnet-4.5", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
     ("opus", "us.anthropic.claude-opus-4-5-20251101-v1:0"),
     ("opus-4.5", "us.anthropic.claude-opus-4-5-20251101-v1:0"),
-    ("opus-4.6", "us.anthropic.claude-opus-4-6-v1"),
-    ("opus-4.7", "global.anthropic.claude-opus-4-7-v1:0"),
+    ("opus-4.6", "global.anthropic.claude-opus-4-6-v1"),
+    ("sonnet-4.6", "global.anthropic.claude-sonnet-4-6"),
+    ("opus-4.7", "global.anthropic.claude-opus-4-7"),
     ("haiku", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
     ("haiku-4.5", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
     // Reserved — not yet released. Resolver returns the alias unchanged so
@@ -61,11 +62,15 @@ mod tests {
         );
         assert_eq!(
             resolve_model_id("opus-4.6"),
-            "us.anthropic.claude-opus-4-6-v1"
+            "global.anthropic.claude-opus-4-6-v1"
+        );
+        assert_eq!(
+            resolve_model_id("sonnet-4.6"),
+            "global.anthropic.claude-sonnet-4-6"
         );
         assert_eq!(
             resolve_model_id("opus-4.7"),
-            "global.anthropic.claude-opus-4-7-v1:0"
+            "global.anthropic.claude-opus-4-7"
         );
         assert_eq!(
             resolve_model_id("us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
