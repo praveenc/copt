@@ -240,4 +240,147 @@ pub const OPTIMIZER_SYSTEM_PROMPT: &str = OPTIMIZER_SYSTEM_PROMPT_4_5;
 
 ---
 
+### 10. Use project `make` targets, not raw `cargo` commands
+
+**Problem:** The project has a `Makefile` with curated build/test/lint targets (`make ci`, `make ci-quiet`, `make ci-release`, `make release`, `make check`). Bypassing them with raw `cargo build --release` or `cargo test` skips project conventions (e.g., the `-D warnings` clippy flag, the coordinated fmt→lint→build→test order) and produces inconsistent CI/local behaviour.
+
+```bash
+# ❌ WRONG - bypasses project conventions, may pass locally and fail CI
+cargo build --release
+cargo test
+```
+
+```bash
+# ✅ CORRECT - use project targets
+make release        # release build
+make ci-quiet       # concise CI gate (agent-friendly)
+make ci             # full debug CI gate
+make ci-release     # full release CI gate
+make check          # auto-fix formatting, then lint and test
+```
+
+**Rule:** Before running ANY `cargo` command, check `Makefile` for a target that covers the same intent. Raw `cargo` is only appropriate for one-off things the Makefile doesn't cover (e.g., `cargo run -- <specific args>` during live testing, or `cargo insta test --accept` for snapshot updates).
+
+---
+
+### 11. `String::replace` silently no-ops when the needle is absent
+
+**Problem:** Deriving a sibling filename from a "primary" path with `replace` is only safe if the sentinel substring is guaranteed to be present. When it's absent, `replace` returns the input unchanged — which can produce a silent filename collision that then gets overwritten by a later write.
+
+This was the root cause of a `-o <path>` bug in `src/main.rs` where explicit user-supplied paths (e.g. `-o /tmp/foo.txt`) clobbered the optimized output with the original prompt:
+
+```rust
+// ❌ WRONG - returns the same path unchanged when the sentinel isn't there
+let original_path = {
+    let filename = path.file_name().unwrap().to_string_lossy();
+    // When `filename` is "foo.txt" (no "_optimized.txt" suffix),
+    // `original_filename` is STILL "foo.txt" — same path as `path`.
+    let original_filename = filename.replace("_optimized.txt", "_original.txt");
+    path.with_file_name(original_filename)
+};
+
+// Then:
+tokio::fs::write(path, &result.optimized).await?;        // writes optimized
+tokio::fs::write(&original_path, &result.original).await?; // OVERWRITES same file with original
+```
+
+```rust
+// ✅ CORRECT - check the sentinel is actually there, otherwise derive a
+// different sibling name
+let original_path = {
+    let filename = path.file_name().unwrap().to_string_lossy();
+    if filename.contains("_optimized.txt") {
+        let original_filename = filename.replace("_optimized.txt", "_original.txt");
+        path.with_file_name(original_filename)
+    } else {
+        // Fallback: `<stem>.original.<ext>` so we never collide with `path`.
+        let stem = path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+        let ext  = path.extension().map(|e| e.to_string_lossy().to_string()).unwrap_or_default();
+        let fallback = if ext.is_empty() {
+            format!("{stem}.original")
+        } else {
+            format!("{stem}.original.{ext}")
+        };
+        path.with_file_name(fallback)
+    }
+};
+```
+
+**Rule:** When deriving a sibling filename via `replace`, either (a) assert the needle is present first, or (b) use an explicit conditional with a fallback that is provably different from the input. Any two consecutive writes in a pipeline must target demonstrably different paths.
+
+---
+
+### 12. Don't guess Bedrock inference profile IDs; list them
+
+**Problem:** Bedrock inference profile IDs don't follow a single naming convention. Some end in `-v1:0`, some in `-v1`, some have no version suffix at all:
+
+| Model | Actual profile ID |
+|-------|-------------------|
+| Opus 4.5 | `global.anthropic.claude-opus-4-5-20251101-v1:0` |
+| Opus 4.6 | `global.anthropic.claude-opus-4-6-v1` |
+| Sonnet 4.6 | `global.anthropic.claude-sonnet-4-6` |
+| Opus 4.7 | `global.anthropic.claude-opus-4-7` |
+
+Guessing `global.anthropic.claude-opus-4-7-v1:0` produces a convincing-looking but wrong string that returns `HTTP 400 {"message":"The provided model identifier is invalid."}` at runtime — not caught by tests, only by a live call.
+
+```rust
+// ❌ WRONG - plausible-looking extrapolation
+"opus-4.7" => "global.anthropic.claude-opus-4-7-v1:0".to_string(),
+```
+
+```rust
+// ✅ CORRECT - value confirmed via `aws bedrock list-inference-profiles`
+"opus-4.7" => "global.anthropic.claude-opus-4-7".to_string(),
+```
+
+**Rule:** Before hard-coding a Bedrock inference profile ID, run:
+
+```bash
+aws bedrock list-inference-profiles --region us-west-2 2>&1 \
+  | grep '"inferenceProfileId"' | sort -u
+```
+
+Copy the exact string. Do NOT extrapolate a pattern from neighbouring models.
+
+---
+
+### 13. Family-aware LLM request parameters
+
+**Problem:** Anthropic's API contract for sampling parameters drifts across model families. Claude 4.5 and 4.6 accept a non-default `temperature`. Claude Opus 4.7 returns HTTP 400 on any non-default `temperature`, `top_p`, or `top_k`:
+
+```json
+{"error":{"type":"invalid_request_error","message":"`temperature` is deprecated for this model."}}
+```
+
+A single hard-coded `temperature: Some(0.3)` works for older models but breaks on 4.7.
+
+```rust
+// ❌ WRONG - hard-coded temperature works for 4.5/4.6 but HTTP 400 on 4.7
+let request = BedrockRequest {
+    temperature: Some(0.3),
+    // ...
+};
+```
+
+```rust
+// ✅ CORRECT - derive from model family; drop the field entirely for 4.7
+let model_id = get_bedrock_model_id(model);
+let family = crate::llm::ModelFamily::from_model_id(&model_id);
+let temperature = if family == crate::llm::ModelFamily::Claude47 {
+    None
+} else {
+    Some(0.3)
+};
+let request = BedrockRequest {
+    temperature,
+    // ...
+};
+```
+
+Combined with `#[serde(skip_serializing_if = "Option::is_none")]` on the field, `None` cleanly drops the key from the JSON body — exactly what the 4.7 contract requires.
+
+**Rule:** Any request parameter whose acceptance varies across model families should be sourced from a `ModelFamily`-aware helper, not hard-coded. Classify the model at the top of the `complete()` call and let the family decide. Use `Option<T>` + `skip_serializing_if = "Option::is_none"` so dropping a field is a one-line change.
+
+---
+
 *Last updated: 2026-04-16*
