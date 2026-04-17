@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-17
+
 ### Added
 
 - **Claude 4.7 family support**: New `opus-4.7` model alias resolves to the `global.anthropic.claude-opus-4-7` Bedrock inference profile (released 2026-04-16). Selecting this model routes optimization through a Claude 4.7-specific meta-prompt.
@@ -16,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **4.7-specific enhancement hints**: New `optimizer::get_family_enhancements()` appends 4.7 guidance (scope explicitness, scratchpad directives, tone, length calibration, vision) to the LLM user message when targeting Opus 4.7.
 - **`-t` / `--target` CLI flag**: Decouple the rewriter model (`-m`) from the target family whose best-practices the rewrite applies. Values: `auto` (default; infers from `-m`), `4.5`, `4.6`, `4.7`. Example: `copt -m sonnet -t 4.7` uses Sonnet 4.5 as the rewriter and Opus 4.7 prompting rules as the target.
 - **`sonnet-4.6` alias**: Resolves to the `global.anthropic.claude-sonnet-4-6` Bedrock inference profile. Added alongside the 4.7 work after confirming the profile exists in `us-west-2`.
+- **Output structure/length enforcement**: Both 4.5 and 4.7 meta-prompts now mandate top-level semantic XML tags (`<task>`, `<requirements>`, `<response_format>`, etc.) and cap the rewrite at ~3x the original word count. Addresses regressions where Sonnet sometimes dropped XML and Haiku over-elaborated.
+- **Non-Opus rewriter hint**: When `-t 4.7` is paired with a non-Opus rewriter (sonnet/haiku), a one-line `ℹ` tip prints to stderr recommending an Opus-class rewriter for cleanest 4.7 output. Silent when an Opus rewriter is used or target is 4.5/4.6.
+- **Outer-wrapper post-processor**: `clean_llm_output()` now strips `<prompt>`, `<rewrite>`, `<optimized_prompt>`, or `<output>` tags when the entire LLM output is wrapped in one. Semantic top-level tags are preserved.
 
 ### Changed
 
@@ -26,10 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`temperature` omitted on Claude 4.7**: Both Bedrock clients (SigV4 and Bearer token) now drop `temperature` from requests when the resolved family is `Claude47`, matching the 4.7 migration guide (non-default sampling parameters return 400).
 - **`optimize_with_llm` signature**: Gained a `target_family: Option<ModelFamily>` parameter. `None` preserves historical behaviour (derive family from model); `Some(family)` overrides.
 
+### Fixed
+
+- **`-o <path>` bug**: Explicit output paths (e.g., `-o /tmp/foo.txt`) previously clobbered the optimized file with the original prompt because the original-path derivation only handled the auto-save `_optimized.txt` sentinel. Explicit paths now produce `<stem>.original.<ext>` for the original copy.
+
 ### Technical
 
-- Test suite: 101 → 111 (10 new tests covering family classification, alias resolution, Bedrock ID mapping, system-prompt selection, and the unreleased-model guard).
+- Test suite: 101 → 114 (+13 new tests covering family classification, alias resolution, Bedrock ID mapping, system-prompt selection, unreleased-model guard, and outer-wrapper stripping).
 - `OPTIMIZER_SYSTEM_PROMPT` is preserved as a back-compat re-export of `OPTIMIZER_SYSTEM_PROMPT_4_5`.
+- `docs/RUST_LEARNINGS.md`: four new sections (10 — use `make` targets; 11 — `String::replace` silent no-op; 12 — don't guess Bedrock profile IDs; 13 — family-aware LLM request parameters).
 
 ## [0.3.2] - 2026-02-15
 
@@ -366,7 +376,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/praveenc/copt/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/praveenc/copt/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/praveenc/copt/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/praveenc/copt/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/praveenc/copt/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/praveenc/copt/compare/v0.2.3...v0.3.0

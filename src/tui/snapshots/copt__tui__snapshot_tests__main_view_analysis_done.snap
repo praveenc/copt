@@ -2,7 +2,7 @@
 source: src/tui/snapshot_tests.rs
 expression: output
 ---
-⚡  CLAUDE PROMPT OPTIMIZER v0.3.2                                               
+⚡  CLAUDE PROMPT OPTIMIZER v0.4.0                                               
 Optimize prompts for Claude 4.x                                                 
 📥  Input: test_prompt.txt (53 chars, 12 tokens)                                 
 ────────────────────────────────────────────────────────────────────────────────
