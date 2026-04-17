@@ -23,17 +23,37 @@
 | Windows (x64)         | [copt-windows-x64.exe](https://github.com/praveenc/copt/releases/latest) |
 
 ```bash
-# macOS/Linux quick install
+# macOS / Linux — user-local install (no sudo, XDG-compliant)
+mkdir -p ~/.local/bin
+curl -L https://github.com/praveenc/copt/releases/latest/download/copt-macos-arm64 -o ~/.local/bin/copt
+chmod +x ~/.local/bin/copt
+
+# Ensure ~/.local/bin is on PATH (skip if already there):
+#   zsh:  echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && exec zsh
+#   bash: echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && exec bash
+
+copt --version
+```
+
+<details>
+<summary>Prefer a system-wide install?</summary>
+
+```bash
 curl -L https://github.com/praveenc/copt/releases/latest/download/copt-macos-arm64 -o copt
 chmod +x copt && sudo mv copt /usr/local/bin/
 ```
+
+`/usr/local/bin` is on `PATH` by default on macOS and most Linux distros, but requires `sudo`. On Apple Silicon Homebrew setups, `/opt/homebrew/bin` is an alternative — but don't write there directly unless the tool is a formal Homebrew formula.
+
+</details>
 
 <details>
 <summary>⚠️ macOS Gatekeeper note</summary>
 
 If macOS blocks the binary, either:
 1. Go to **System Settings → Privacy & Security** and click **"Allow Anyway"**
-2. Or run: `xattr -d com.apple.quarantine /usr/local/bin/copt`
+2. Or run: `xattr -d com.apple.quarantine ~/.local/bin/copt`
+   (replace with `/usr/local/bin/copt` if you installed system-wide)
 
 </details>
 
