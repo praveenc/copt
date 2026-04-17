@@ -1,6 +1,6 @@
 //! copt - Claude Optimizer
 //!
-//! A beautiful CLI tool to optimize prompts for Claude 4.5 family of models.
+//! A beautiful CLI tool to optimize prompts for the Claude 4.x family of models (4.5, 4.6, and 4.7).
 //! Analyzes prompts and rewrites them according to Anthropic's official best practices.
 
 use anyhow::{Context, Result};
@@ -20,12 +20,12 @@ mod utils;
 // Re-export types from analyzer for use throughout the crate
 pub use analyzer::{Issue, Severity};
 
-/// Claude Optimizer - A beautiful CLI tool to optimize prompts for Claude 4.5 models
+/// Claude Optimizer - A beautiful CLI tool to optimize prompts for Claude 4.x models (4.5 / 4.6 / 4.7)
 #[derive(Parser, Debug)]
 #[command(
     name = "copt",
     version,
-    about = "⚡ Optimize prompts for Claude 4.5 models",
+    about = "⚡ Optimize prompts for Claude 4.x models (4.5, 4.6, 4.7)",
     after_help = "Examples:\n  copt \"Your prompt here\"\n  copt -f prompt.txt\n  copt -f prompt.txt --offline\n  cat prompt.txt | copt"
 )]
 struct Cli {
@@ -59,7 +59,7 @@ struct Cli {
     )]
     provider: Provider,
 
-    /// Model ID or alias
+    /// Model ID or alias (controls which model performs the rewrite)
     #[arg(
         short,
         long,
@@ -67,6 +67,20 @@ struct Cli {
         default_value = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
     )]
     model: String,
+
+    /// Target Claude family whose best-practices the rewrite should optimize for.
+    /// `auto` (default) infers the family from --model. Choose explicitly to decouple
+    /// the "rewriter" model from the "target" family (e.g., let Sonnet 4.5 rewrite your
+    /// prompt for Opus 4.7: `-m sonnet -t 4.7`).
+    #[arg(
+        short = 't',
+        long = "target",
+        value_name = "FAMILY",
+        value_parser = ["auto", "4.5", "4.6", "4.7"],
+        default_value = "auto",
+        hide_default_value = true
+    )]
+    target: String,
 
     /// AWS region for Bedrock
     #[arg(long, default_value = "us-west-2", hide_default_value = true)]
@@ -194,6 +208,17 @@ async fn main() -> Result<()> {
     // Resolve model aliases (e.g., "sonnet" → full Bedrock ARN)
     cli.model = cli::resolve_model_id(&cli.model);
 
+    // Guard against selecting Claude 4.7 family models that are not yet
+    // released. As of 2026-04-16 only Claude Opus 4.7 is GA — Sonnet 4.7 and
+    // Haiku 4.7 error with a clear message. The guard is skipped in offline
+    // mode so static analysis with a 4.7 target is still useful.
+    if !cli.offline {
+        if let Some(err) = llm::unreleased_model_error(&cli.model) {
+            eprintln!("{} {}", "Error:".red().bold(), err);
+            std::process::exit(1);
+        }
+    }
+
     // Interactive mode requires TTY
     if cli.interactive && !io::stdout().is_terminal() {
         eprintln!(
@@ -206,6 +231,21 @@ async fn main() -> Result<()> {
     // Check provider connectivity on first use (unless offline or skipped)
     if !cli.offline && !cli.skip_connectivity_check {
         check_provider_connectivity(&cli).await?;
+    }
+
+    // Tip: when targeting 4.7 with a non-Opus-class rewriter, suggest the
+    // Opus-class rewriters which empirically produce the cleanest 4.7 output
+    // (Haiku over-elaborates; Sonnet occasionally drops XML structure).
+    if !cli.quiet
+        && cli.format != OutputFormat::Quiet
+        && parse_target_family(&cli.target) == Some(llm::ModelFamily::Claude47)
+        && !is_opus_rewriter(&cli.model)
+    {
+        eprintln!(
+            "{} Targeting Claude 4.7 with `{}`. For the cleanest 4.7 rewrite we recommend an Opus-class rewriter (`-m opus-4.6` or `-m opus-4.7`).",
+            "ℹ".bright_cyan(),
+            cli.model
+        );
     }
 
     // Get the input prompt
@@ -233,6 +273,25 @@ async fn main() -> Result<()> {
 
 /// Apply config file defaults for CLI fields the user didn't explicitly set.
 /// CLI args always take precedence over config values.
+/// Parse the `--target` / `-t` CLI value into an explicit `ModelFamily`,
+/// or `None` for `auto` (meaning: derive from the `--model` flag).
+fn parse_target_family(target: &str) -> Option<llm::ModelFamily> {
+    match target {
+        "4.5" => Some(llm::ModelFamily::Claude45),
+        "4.6" => Some(llm::ModelFamily::Claude46),
+        "4.7" => Some(llm::ModelFamily::Claude47),
+        _ => None, // "auto" or anything else
+    }
+}
+
+/// Return true when the resolved model ID refers to an Opus-class rewriter.
+/// Used to print a "recommend Opus rewriter" hint when the user targets 4.7
+/// with a smaller model.
+fn is_opus_rewriter(model: &str) -> bool {
+    let lower = model.to_lowercase();
+    lower.contains("opus")
+}
+
 fn apply_config_defaults(cli: &mut Cli, matches: &clap::ArgMatches) {
     use clap::parser::ValueSource;
 
@@ -667,9 +726,15 @@ async fn run_optimization(cli: &Cli, prompt: &str) -> Result<OptimizationResult>
             }
         };
 
-        let result =
-            optimizer::optimize_with_llm(prompt, &issues, client.as_ref(), &cli.model, prompt_type)
-                .await?;
+        let result = optimizer::optimize_with_llm(
+            prompt,
+            &issues,
+            client.as_ref(),
+            &cli.model,
+            prompt_type,
+            parse_target_family(&cli.target),
+        )
+        .await?;
         if let Some(s) = spinner {
             tui::renderer::stop_optimizing_spinner(s);
         }
@@ -805,11 +870,32 @@ async fn handle_output(cli: &Cli, result: &OptimizationResult) -> Result<()> {
             })?;
         }
 
-        // Derive original prompt path from optimized path
+        // Derive original prompt path from optimized path.
+        // When the filename contains the `_optimized.txt` sentinel (auto-save
+        // convention), swap to `_original.txt`. For an explicit `-o <path>`
+        // that doesn't follow that convention, append `.original` before the
+        // extension so we don't clobber the optimized file.
         let original_path = {
             let filename = path.file_name().unwrap().to_string_lossy();
-            let original_filename = filename.replace("_optimized.txt", "_original.txt");
-            path.with_file_name(original_filename)
+            if filename.contains("_optimized.txt") {
+                let original_filename = filename.replace("_optimized.txt", "_original.txt");
+                path.with_file_name(original_filename)
+            } else {
+                let stem = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let ext = path
+                    .extension()
+                    .map(|e| e.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let original_filename = if ext.is_empty() {
+                    format!("{stem}.original")
+                } else {
+                    format!("{stem}.original.{ext}")
+                };
+                path.with_file_name(original_filename)
+            }
         };
 
         // Write the optimized prompt
@@ -906,6 +992,7 @@ async fn run_interactive_mode(cli: &Cli, prompt: &str) -> Result<()> {
             client.as_ref(),
             &cli.model,
             prompt_type,
+            parse_target_family(&cli.target),
         )
         .await
         {

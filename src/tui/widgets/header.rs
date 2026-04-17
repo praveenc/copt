@@ -31,7 +31,7 @@ pub fn render_header(frame: &mut Frame, area: Rect, model: &Model) {
     let subtitle = if model.offline_mode {
         "Static analysis only (no LLM calls)"
     } else {
-        "Optimize prompts for Claude 4.5"
+        "Optimize prompts for Claude 4.x"
     };
 
     // Input info line

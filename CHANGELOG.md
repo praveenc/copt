@@ -5,6 +5,32 @@ All notable changes to `copt` (Claude Prompt Optimizer) will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Claude 4.7 family support**: New `opus-4.7` model alias resolves to the `global.anthropic.claude-opus-4-7` Bedrock inference profile (released 2026-04-16). Selecting this model routes optimization through a Claude 4.7-specific meta-prompt.
+- **4.7-specific optimizer rules**: Literal instruction following, adaptive thinking guidance, effort-level awareness (xhigh/high/medium/low/max), scratchpad/memory directives, condensed context (drops 4.5/4.6 scaffolding), tone specification, response-length calibration, and vision-aware instructions (high-res images, 1:1 pixel coordinates).
+- **Model family classifier**: New `llm::ModelFamily` enum (`Claude45`, `Claude46`, `Claude47`) drives meta-prompt selection from the model ID.
+- **Reserved aliases**: `sonnet-4.7` and `haiku-4.7` are registered; selecting them produces a clear "not yet released" error (only Opus 4.7 is GA as of 2026-04-16). `--offline` bypasses the guard so analysis still works.
+- **4.7-specific enhancement hints**: New `optimizer::get_family_enhancements()` appends 4.7 guidance (scope explicitness, scratchpad directives, tone, length calibration, vision) to the LLM user message when targeting Opus 4.7.
+- **`-t` / `--target` CLI flag**: Decouple the rewriter model (`-m`) from the target family whose best-practices the rewrite applies. Values: `auto` (default; infers from `-m`), `4.5`, `4.6`, `4.7`. Example: `copt -m sonnet -t 4.7` uses Sonnet 4.5 as the rewriter and Opus 4.7 prompting rules as the target.
+- **`sonnet-4.6` alias**: Resolves to the `global.anthropic.claude-sonnet-4-6` Bedrock inference profile. Added alongside the 4.7 work after confirming the profile exists in `us-west-2`.
+
+### Changed
+
+- `llm::build_optimization_message` now takes a `ModelFamily` parameter so the user message labels the target model family correctly ("Optimize this prompt for Claude 4.7:" vs 4.5).
+- `optimizer::optimize_with_llm` selects the meta-prompt via `system_prompt_for_family` instead of the hard-coded 4.5 prompt. Unknown model IDs continue to fall back to the 4.5 meta-prompt.
+- **Corrected Opus 4.7 inference profile ID**: `opus-4.7` now maps to `global.anthropic.claude-opus-4-7` (was an incorrect guess of `global.anthropic.claude-opus-4-7-v1:0` — returned HTTP 400 from Bedrock).
+- **Corrected Opus 4.6 inference profile ID**: `opus-4.6` now maps to `global.anthropic.claude-opus-4-6-v1` (was `us.anthropic.claude-opus-4-6-v1`; the `global.` profile is the supported one).
+- **`temperature` omitted on Claude 4.7**: Both Bedrock clients (SigV4 and Bearer token) now drop `temperature` from requests when the resolved family is `Claude47`, matching the 4.7 migration guide (non-default sampling parameters return 400).
+- **`optimize_with_llm` signature**: Gained a `target_family: Option<ModelFamily>` parameter. `None` preserves historical behaviour (derive family from model); `Some(family)` overrides.
+
+### Technical
+
+- Test suite: 101 → 111 (10 new tests covering family classification, alias resolution, Bedrock ID mapping, system-prompt selection, and the unreleased-model guard).
+- `OPTIMIZER_SYSTEM_PROMPT` is preserved as a back-compat re-export of `OPTIMIZER_SYSTEM_PROMPT_4_5`.
+
 ## [0.3.2] - 2026-02-15
 
 ### Added

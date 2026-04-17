@@ -72,7 +72,7 @@ fn render_header(w: &mut impl Write, model: &Model) -> io::Result<()> {
     writeln!(
         w,
         "  {}",
-        format!("v{} • Optimize prompts for Claude 4.5", version).bright_black()
+        format!("v{} • Optimize prompts for Claude 4.x", version).bright_black()
     )?;
     writeln!(w)?;
 

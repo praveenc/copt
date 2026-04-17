@@ -7,14 +7,25 @@ pub mod suggest;
 
 // TODO: Wire resolve_model_id() into main.rs (Phase 2 quick win)
 /// Short aliases for models
+///
+/// Note: `sonnet-4.7` and `haiku-4.7` are reserved placeholders — as of
+/// 2026-04-16 only Claude Opus 4.7 is released. Selecting either reserved
+/// alias surfaces a clear "not yet released" error at runtime
+/// (see `crate::llm::unreleased_model_error`).
 pub const MODEL_ALIASES: &[(&str, &str)] = &[
     ("sonnet", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
     ("sonnet-4.5", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
     ("opus", "us.anthropic.claude-opus-4-5-20251101-v1:0"),
     ("opus-4.5", "us.anthropic.claude-opus-4-5-20251101-v1:0"),
-    ("opus-4.6", "us.anthropic.claude-opus-4-6-v1"),
+    ("opus-4.6", "global.anthropic.claude-opus-4-6-v1"),
+    ("sonnet-4.6", "global.anthropic.claude-sonnet-4-6"),
+    ("opus-4.7", "global.anthropic.claude-opus-4-7"),
     ("haiku", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
     ("haiku-4.5", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+    // Reserved — not yet released. Resolver returns the alias unchanged so
+    // downstream guards can produce a "not yet released" error.
+    ("sonnet-4.7", "sonnet-4.7"),
+    ("haiku-4.7", "haiku-4.7"),
 ];
 
 /// Resolve a model name or alias to a full model ID
@@ -51,11 +62,27 @@ mod tests {
         );
         assert_eq!(
             resolve_model_id("opus-4.6"),
-            "us.anthropic.claude-opus-4-6-v1"
+            "global.anthropic.claude-opus-4-6-v1"
+        );
+        assert_eq!(
+            resolve_model_id("sonnet-4.6"),
+            "global.anthropic.claude-sonnet-4-6"
+        );
+        assert_eq!(
+            resolve_model_id("opus-4.7"),
+            "global.anthropic.claude-opus-4-7"
         );
         assert_eq!(
             resolve_model_id("us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
             "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
         );
+    }
+
+    #[test]
+    fn test_resolve_model_id_reserved_aliases() {
+        // sonnet-4.7 / haiku-4.7 are reserved; the resolver returns the alias
+        // unchanged so a runtime guard can produce a "not yet released" error.
+        assert_eq!(resolve_model_id("sonnet-4.7"), "sonnet-4.7");
+        assert_eq!(resolve_model_id("haiku-4.7"), "haiku-4.7");
     }
 }

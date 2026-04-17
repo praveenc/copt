@@ -1,13 +1,13 @@
 # ⚡ copt — Claude Prompt Optimizer
 
-> Optimize your prompts for Claude 4.5 models
+> Optimize your prompts for Claude 4.x models (4.5, 4.6, and 4.7)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![Release](https://img.shields.io/github/v/release/praveenc/copt?include_prereleases)](https://github.com/praveenc/copt/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/praveenc/copt/ci.yml?branch=main)](https://github.com/praveenc/copt/actions)
 
-**Claude 4.5 models** do exactly what you ask — no more, no less. Prompts that worked with Claude 3.x may need adjustment. **copt** analyzes your prompts for anti-patterns and optimizes them using Claude 4.5 itself.
+**Claude 4.5 models** do exactly what you ask — no more, no less. Prompts that worked with Claude 3.x may need adjustment. **copt** analyzes your prompts for anti-patterns and optimizes them using Claude 4.5 itself. With Claude 4.7, prompts also need to account for literal instruction following, adaptive thinking, and calibrated response length — **copt** handles these automatically when you target an `opus-4.7` model.
 
 ---
 
@@ -142,6 +142,7 @@ Options:
       --no-save                  Disable auto-save
   -p, --provider <PROVIDER>      Provider: anthropic, bedrock
   -m, --model <MODEL>            Model ID or alias
+  -t, --target <FAMILY>          Target Claude family: auto (default), 4.5, 4.6, 4.7
       --region <REGION>          AWS region for Bedrock
       --format <FORMAT>          Output format: pretty, json, quiet
       --diff                     Show before/after diff
@@ -170,13 +171,46 @@ Use short aliases instead of full Bedrock ARNs:
 |-------|-------|
 | `sonnet` / `sonnet-4.5` | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
 | `opus` / `opus-4.5` | `us.anthropic.claude-opus-4-5-20251101-v1:0` |
-| `opus-4.6` | `us.anthropic.claude-opus-4-6-v1` |
+| `opus-4.6` | `global.anthropic.claude-opus-4-6-v1` |
+| `sonnet-4.6` | `global.anthropic.claude-sonnet-4-6` |
+| `opus-4.7` | `global.anthropic.claude-opus-4-7` |
 | `haiku` / `haiku-4.5` | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 
 ```bash
 copt -f prompt.txt -m opus            # Use Claude Opus 4.5
 copt -f prompt.txt -m haiku           # Use Claude Haiku 4.5
 ```
+
+### Claude 4.7 Support
+
+**Opus 4.7** is generally available as of 2026-04-16. Sonnet 4.7 and Haiku 4.7 are not yet released.
+
+When you target `opus-4.7`, **copt** routes optimization through a Claude 4.7-specific meta-prompt that applies eight 4.7 behaviors: **literal instruction following** (the model does exactly what you say), **adaptive thinking guidance** (explicit reasoning directives), **effort-level awareness** (xhigh/high/medium/low/max markers), **scratchpad and memory directives** (working-memory tags), **condensed context** (drops 4.5/4.6 scaffolding that 4.7 doesn't need), **tone specification** (explicit tone markers), **response-length calibration** (explicit length bounds), and **vision-aware instructions** (high-resolution image handling up to 2576px/3.75MP with 1:1 pixel coordinates).
+
+Selecting `sonnet-4.7` or `haiku-4.7` produces a clear "not yet released" error unless you run in `--offline` mode (offline mode still works for analysis).
+
+**Usage:**
+
+```bash
+copt -f prompt.txt -m opus-4.7
+```
+
+### Targeting a family explicitly (`-t` / `--target`)
+
+By default `copt` infers the target Claude family from `--model` (`-m`). To decouple the rewriter model from the target family — for example, to use a fast, cheap Sonnet 4.5 to produce a prompt tailored for Opus 4.7 — pass `-t`:
+
+```bash
+# Opus 4.7 rewrites for Opus 4.7 (auto)
+copt -f prompt.txt -m opus-4.7
+
+# Sonnet 4.5 rewrites for Opus 4.7 family best-practices
+copt -f prompt.txt -m sonnet -t 4.7
+
+# Opus 4.7 rewrites a prompt that will run on Sonnet 4.5
+copt -f prompt.txt -m opus-4.7 -t 4.5
+```
+
+Accepted values for `-t`: `auto` (default), `4.5`, `4.6`, `4.7`.
 
 ### Common Examples
 

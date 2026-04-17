@@ -218,7 +218,7 @@ pub fn create_default_config() -> Result<PathBuf> {
 [default]
 provider = "bedrock"       # "bedrock" or "anthropic"
 model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-# Aliases: "sonnet", "opus", "haiku", "sonnet-4.5", "opus-4.5", "haiku-4.5"
+# Aliases: "sonnet", "opus", "haiku", "sonnet-4.5", "opus-4.5", "opus-4.6", "opus-4.7", "haiku-4.5"
 
 [anthropic]
 # api_key_env = "ANTHROPIC_API_KEY"   # env var name (default)
